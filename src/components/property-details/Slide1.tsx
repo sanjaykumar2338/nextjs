@@ -15,47 +15,51 @@ type PropertyImage = {
     height: number;
 };
 
-const propertyImages: PropertyImage[] = [
+// Default images fallback
+const defaultPropertyImages: PropertyImage[] = [
     {
         src: "/assets/images/section/properties-details-1.jpg",
         alt: "img-property",
-        width: 930,
-        height: 620,
+        width: 600,
+        height: 600,
     },
     {
         src: "/assets/images/section/properties-details-2.jpg",
         alt: "img-property",
-        width: 930,
-        height: 620,
+        width: 600,
+        height: 600,
     },
     {
         src: "/assets/images/section/properties-details-3.jpg",
         alt: "img-property",
-        width: 930,
-        height: 620,
-    },
-    {
-        src: "/assets/images/section/properties-details-1.jpg",
-        alt: "img-property",
-        width: 930,
-        height: 620,
-    },
-    {
-        src: "/assets/images/section/properties-details-2.jpg",
-        alt: "img-property",
-        width: 930,
-        height: 620,
-    },
-    {
-        src: "/assets/images/section/properties-details-3.jpg",
-        alt: "img-property",
-        width: 930,
-        height: 620,
+        width: 600,
+        height: 600,
     },
 ];
 
-export default function Slide1() {
+// Property type to match Supabase structure
+type Property = {
+    id: string | number;
+    data?: {
+        title?: Array<{ text: string }>;
+    };
+    images?: string[];
+};
+
+export default function Slide1({ property }: { property?: Property }) {
     const [isOpen, setIsOpen] = useState(false);
+    
+    // Get images from property or use default
+    const propertyImages: PropertyImage[] = property?.images?.length 
+        ? property.images.map((imageUrl, index) => ({
+            src: imageUrl,
+            alt: property.data?.title?.[0]?.text || `Property ${property.id} image ${index + 1}`,
+            width: 600,
+            height: 600,
+        }))
+        : defaultPropertyImages;
+
+    
     return (
         <>
             <Gallery>
@@ -120,6 +124,9 @@ export default function Slide1() {
                                                         priority
                                                         style={{
                                                             objectFit: "cover",
+                                                            width: "100%",
+                                                            height: "400px",
+                                                            borderRadius: "8px",
                                                         }}
                                                     />
                                                 </div>

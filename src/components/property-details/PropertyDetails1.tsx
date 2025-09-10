@@ -57,7 +57,7 @@ export default function PropertyDetails1({ property }: { property: Property }) {
     return (
         <>
             <div className="properties-details">
-                <Slide1 />
+                <Slide1 property={property} />
                 <div className="tf-container tf-spacing-7">
                     <div className="row">
                         <div className="col-lg-8">

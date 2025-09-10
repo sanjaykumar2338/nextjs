@@ -99,12 +99,9 @@ export default function PropertiesSupabase() {
       
       // If cities are configured and not showing all, apply city filter
       if (CITIES_CONFIG.ENABLED_CITIES.length > 0 && !filters.city) {
-        // Map short codes to full city names
         const enabledCityNames = CITIES_CONFIG.ENABLED_CITIES.map(
           code => CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]
         ).filter(Boolean);
-        
-        // Create OR condition for all enabled cities
         const cityQuery = enabledCityNames.join('|');
         modifiedFilters = { ...modifiedFilters, city: cityQuery };
       }
@@ -162,17 +159,23 @@ export default function PropertiesSupabase() {
 
   // Transform Supabase listings to Map component format
   const transformListingsForMap = (listings: SupabaseListing[]) => {
-    return listings
-      .filter(listing => 
-        listing.data?.location?.latitude && 
-        listing.data?.location?.longitude
-      )
-      .map(listing => ({
+    return listings.map((listing, index) => {
+      // Get coordinates from data.location or use Playa del Carmen base coordinates
+      const baseLatitude = 20.629559;  // Playa del Carmen
+      const baseLongitude = -87.073885;
+      const gridSize = Math.ceil(Math.sqrt(listings.length));
+      const row = Math.floor(index / gridSize);
+      const col = index % gridSize;
+      
+      const lat = listing.data?.location?.latitude || (baseLatitude + (row * 0.005));
+      const lng = listing.data?.location?.longitude || (baseLongitude + (col * 0.005));
+      
+      return {
         id: listing.id,
         title: listing.data?.title?.[0]?.text || `Property ${listing.id}`,
         address: listing.data?.location?.address1 || `${listing.city}, ${listing.country?.toUpperCase()}`,
-        lat: listing.data?.location?.latitude!,
-        long: listing.data?.location?.longitude!,
+        lat: lat,
+        long: lng,
         beds: listing.data?.numberOf?.bedrooms || 0,
         baths: listing.data?.numberOf?.bathrooms || 0,
         sqft: listing.data?.area?.living || 0,
@@ -180,7 +183,8 @@ export default function PropertiesSupabase() {
         price: getDisplayPrice(listing),
         city: listing.city,
         country: listing.country
-      }));
+      };
+    });
   };
 
   const totalPages = Math.ceil(totalCount / itemPerPage);
