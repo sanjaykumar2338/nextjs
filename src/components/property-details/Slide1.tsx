@@ -117,8 +117,8 @@ export default function Slide1({ property }: { property?: Property }) {
                                             >
                                                 <div ref={ref}>
                                                     <Image
-                                                        alt={image.alt}
-                                                        src={image.src}
+                                                        alt={image.alt || "Property image"}
+                                                        src={image.src || "/images/placeholder.jpg"}
                                                         width={image.width}
                                                         height={image.height}
                                                         priority

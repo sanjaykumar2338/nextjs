@@ -356,8 +356,8 @@
     }
     .wrap {
         gap: 12px;
-        align-items: end;
-        justify-content: end;
+        align-items: flex-end;
+        justify-content: flex-end;
         height: 100%;
     }
     .box {

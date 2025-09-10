@@ -205,14 +205,17 @@ export default function MapComponent({ sorted }: MapComponentProps) {
                 new mapboxgl.FullscreenControl(),
                 "top-right"
             );
-            map.current.addControl(
-                new mapboxgl.GeolocateControl({
-                    positionOptions: { enableHighAccuracy: true },
-                    trackUserLocation: true,
-                    showUserHeading: true,
-                }),
-                "top-right"
-            );
+            // Only add geolocation control if supported
+            if (navigator.geolocation) {
+                map.current.addControl(
+                    new mapboxgl.GeolocateControl({
+                        positionOptions: { enableHighAccuracy: true },
+                        trackUserLocation: true,
+                        showUserHeading: true,
+                    }),
+                    "top-right"
+                );
+            }
 
             map.current.on("error", (e: mapboxgl.ErrorEvent) => {
                 console.error("Mapbox error:", e);

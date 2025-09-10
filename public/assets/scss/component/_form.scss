@@ -268,12 +268,12 @@ form {
 
 .form-calculator {
     gap: 12px;
-    align-items: end;
+    align-items: flex-end;
     display: flex;
 
     .tf-grid-layout {
         column-gap: 11px;
-        align-items: end;
+        align-items: flex-end;
     }
     @include res(xl, min) {
         .tf-btn {

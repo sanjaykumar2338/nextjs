@@ -461,7 +461,7 @@ export default function PropertiesSupabase() {
                               </div>
                             </div>
                             
-                            <Link href={`/property-details-1/${listing.id}`} className="overlay-link" />
+                            {listing.id && <Link href={`/property-details-1/${listing.id}`} className="overlay-link" />}
                           </div>
                           
                           <div className="content">
@@ -469,9 +469,15 @@ export default function PropertiesSupabase() {
                               {getDisplayPrice(listing)}
                             </h4>
                             
-                            <Link href={`/property-details-1/${listing.id}`} className="title mb_8 h5 link text_primary-color">
-                              {listing.data?.title?.[0]?.text || `Property ${listing.id}`}
-                            </Link>
+                            {listing.id ? (
+                              <Link href={`/property-details-1/${listing.id}`} className="title mb_8 h5 link text_primary-color">
+                                {listing.data?.title?.[0]?.text || `Property ${listing.id}`}
+                              </Link>
+                            ) : (
+                              <h5 className="title mb_8 h5 text_primary-color">
+                                {listing.data?.title?.[0]?.text || 'Property'}
+                              </h5>
+                            )}
                             
                             <p>{listing.data?.location?.address1 || `${listing.city}, ${listing.country?.toUpperCase()}`}</p>
                             
@@ -528,9 +534,15 @@ export default function PropertiesSupabase() {
                               </div>
                             </div>
                             
-                            <Link href={`/property-details-1/${listing.id}`} className="title mb_8 h5 link text_primary-color">
-                              {listing.data?.title?.[0]?.text || `Property ${listing.id}`}
-                            </Link>
+                            {listing.id ? (
+                              <Link href={`/property-details-1/${listing.id}`} className="title mb_8 h5 link text_primary-color">
+                                {listing.data?.title?.[0]?.text || `Property ${listing.id}`}
+                              </Link>
+                            ) : (
+                              <h5 className="title mb_8 h5 text_primary-color">
+                                {listing.data?.title?.[0]?.text || 'Property'}
+                              </h5>
+                            )}
                             
                             <p>{listing.data?.location?.address1 || `${listing.city}, ${listing.country?.toUpperCase()}`}</p>
                             

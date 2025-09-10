@@ -1659,7 +1659,7 @@ a {
     background-color: var(--White);
     .form-title {
         display: flex;
-        align-items: end;
+        align-items: flex-end;
         background-color: var(--White);
         gap: 20px;
         @include transition3();
