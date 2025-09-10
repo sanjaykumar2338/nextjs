@@ -84,7 +84,12 @@ export async function getListings({
         'For Rent': 'Rent'
       };
       const apiType = typeMapping[transactionType] || transactionType;
-      url.searchParams.append('data->transactionType->id', `eq.${apiType}`);
+      console.log('🏷️ Transaction Type Filter:', { 
+        original: transactionType, 
+        mapped: apiType, 
+        query: `data->transactionType->>id=eq.${apiType}` 
+      });
+      url.searchParams.append('data->transactionType->>id', `eq.${apiType}`);
     }
     
     // Bedrooms filter
@@ -149,6 +154,15 @@ export async function getListings({
     url.searchParams.append('offset', offset.toString());
     
     console.log('🌐 Comprehensive API URL:', url.toString());
+    
+    // Extra debugging for transaction type
+    if (transactionType) {
+      console.log('🔍 Transaction Type Debug:', {
+        filterValue: transactionType,
+        isInUrl: url.toString().includes('transactionType'),
+        fullUrl: url.toString()
+      });
+    }
 
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -170,6 +184,19 @@ export async function getListings({
     const data = await response.json();
     console.log('✅ Successfully fetched', data.length, 'listings');
     
+    // Debug: Show unique transaction types in the response
+    if (data.length > 0) {
+      const transactionTypes = data
+        .map(item => item.data?.transactionType)
+        .filter(Boolean)
+        .map(type => ({ id: type.id, name: type.name }));
+      
+      const uniqueTypes = [...new Map(transactionTypes.map(t => [t.id, t])).values()];
+      if (uniqueTypes.length > 0) {
+        console.log('🏷️ Available transaction types in data:', uniqueTypes);
+      }
+    }
+    
     return data;
   } catch (error) {
     console.error('❌ getListings error:', error);
@@ -185,7 +212,7 @@ export async function getListingsCount(filters = {}) {
     const url = new URL(`${SUPABASE_URL}/rest/v1/listings`);
     
     // Apply same filters as getListings but get count
-    const { country, city, transactionType, bedrooms, bathrooms, minPrice, maxPrice, search } = filters;
+    const { country, city, transactionType, search } = filters;
     
     if (country && country !== 'All Countries') {
       url.searchParams.append('country', `eq.${country}`);
@@ -203,7 +230,7 @@ export async function getListingsCount(filters = {}) {
     if (transactionType && transactionType !== 'All Types') {
       const typeMapping = { 'Sale': 'Sell', 'Rent': 'Rent', 'For Sale': 'Sell', 'For Rent': 'Rent' };
       const apiType = typeMapping[transactionType] || transactionType;
-      url.searchParams.append('data->transactionType->id', `eq.${apiType}`);
+      url.searchParams.append('data->transactionType->>id', `eq.${apiType}`);
     }
     if (search && search.trim() !== '') {
       url.searchParams.append('or', `data->title->0->text.ilike.*${search}*,data->descriptionFull->0->text.ilike.*${search}*`);
@@ -270,7 +297,18 @@ export async function insertListing(listingData) {
  */
 export async function getListingById(id) {
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/listings?id=eq.${id}`, {
+    console.log('🔍 Fetching listing by ID:', id);
+    
+    // Validate ID
+    if (!id || id === 'undefined' || id === 'null') {
+      console.error('❌ Invalid ID provided:', id);
+      throw new Error('Invalid listing ID');
+    }
+
+    const url = `${SUPABASE_URL}/rest/v1/listings?id=eq.${id}`;
+    console.log('🌐 API URL:', url);
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'apikey': SUPABASE_KEY,
@@ -279,11 +317,17 @@ export async function getListingById(id) {
       }
     });
 
+    console.log('📡 Response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error(`Failed to fetch listing: ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ API Error Response:', errorText);
+      throw new Error(`Failed to fetch listing: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('✅ Successfully fetched listing:', data.length > 0 ? 'Found' : 'Not found');
+    
     return data[0] || null;
   } catch (error) {
     console.error('❌ getListingById error:', error);

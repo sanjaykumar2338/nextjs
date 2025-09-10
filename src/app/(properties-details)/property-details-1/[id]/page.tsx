@@ -14,6 +14,12 @@ type PageProps = {
 export default async function Page({ params }: PageProps) {
   const { id } = await params;
 
+  // Validate ID before making API call
+  if (!id || id === 'undefined' || id === 'null' || typeof id !== 'string' || id.trim() === '') {
+    console.error('❌ Invalid property ID received:', id);
+    notFound();
+  }
+
   try {
     const property = await getListingById(id);
     

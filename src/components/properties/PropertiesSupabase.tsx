@@ -7,6 +7,7 @@ import Link from 'next/link';
 import DropdownSelect2 from '../common/DropdownSelect2';
 import Map from '../common/Map';
 import { CITIES_CONFIG } from '@/config/cities';
+import './properties.module.css';
 
 interface SupabaseListing {
   id: number;
@@ -123,6 +124,12 @@ export default function PropertiesSupabase() {
       console.log('🏙️ Applied cities filter:', CITIES_CONFIG.ENABLED_CITIES.length > 0 ? 
         CITIES_CONFIG.ENABLED_CITIES.map(code => `${code} (${CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]})`).join(', ') : 
         'All cities');
+      
+      // Debug: Check for listings with missing or invalid IDs
+      const invalidListings = listingsData.filter((listing: any) => !listing.id || listing.id === 'undefined' || listing.id === null);
+      if (invalidListings.length > 0) {
+        console.warn('⚠️ Found', invalidListings.length, 'listings with invalid IDs:', invalidListings.map((l: any) => ({ id: l.id, title: l.data?.title?.[0]?.text })));
+      }
     } catch (err: any) {
       console.error('❌ Failed to load listings:', err);
       setError(err.message || 'Failed to load listings');
@@ -132,6 +139,7 @@ export default function PropertiesSupabase() {
   };
 
   const updateFilter = (key: keyof Filters, value: string) => {
+    console.log('🔄 Filter Update:', { key, value, previousValue: filters[key] });
     setFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1); // Reset to first page when filters change
   };
@@ -441,19 +449,19 @@ export default function PropertiesSupabase() {
                       {listings.map((listing) => (
                         <div key={listing.id} className="card-house style-default hover-image">
                           <div className="img-style mb_20">
-                            <div className="relative h-48 bg-gray-200 flex items-center justify-center overflow-hidden">
-                              {listing.images && listing.images.length > 0 ? (
-                                <img
-                                  src={listing.images[0]}
-                                  alt={listing.data?.title?.[0]?.text || 'Property'}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-600">
-                                  🏠 No Image
-                                </div>
-                              )}
-                            </div>
+                            {listing.images && listing.images.length > 0 ? (
+                              <Image
+                                src={listing.images[0]}
+                                alt={listing.data?.title?.[0]?.text || 'Property'}
+                                width={410}
+                                height={308}
+                                style={{ objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <div className="image-placeholder">
+                                🏠
+                              </div>
+                            )}
                             
                             <div className="wrap-tag d-flex gap_8 mb_12">
                               <div className={`tag ${listing.data?.transactionType?.id === 'Sell' ? 'sale' : 'rent'} text-button-small fw-6 text_primary-color`}>
@@ -507,16 +515,18 @@ export default function PropertiesSupabase() {
                       {listings.map((listing) => (
                         <div key={listing.id} className="card-house style-list v2">
                           <div className="wrap-img">
-                            <div className="relative h-64 bg-gray-200 flex items-center justify-center overflow-hidden">
+                            <div className="img-style">
                               {listing.images && listing.images.length > 0 ? (
-                                <img
+                                <Image
                                   src={listing.images[0]}
                                   alt={listing.data?.title?.[0]?.text || 'Property'}
-                                  className="w-full h-full object-cover"
+                                  width={540}
+                                  height={360}
+                                  style={{ objectFit: 'cover' }}
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-600">
-                                  🏠 No Image Available
+                                <div className="image-placeholder">
+                                  🏠
                                 </div>
                               )}
                             </div>

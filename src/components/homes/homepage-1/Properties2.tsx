@@ -60,12 +60,18 @@ export default function Properties2() {
                                         <div className="dots"></div>
                                         <div className="content">
                                             <h4 className="title mb_8">
-                                                <Link
-                                                    href={`/property-details-1/${property.id}`}
-                                                    className="link"
-                                                >
-                                                    {property.title}
-                                                </Link>
+                                                {property.id ? (
+                                                    <Link
+                                                        href={`/property-details-1/${property.id}`}
+                                                        className="link"
+                                                    >
+                                                        {property.title}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="link">
+                                                        {property.title}
+                                                    </span>
+                                                )}
                                             </h4>
                                             <p>{property.address}</p>
                                         </div>
@@ -85,14 +91,25 @@ export default function Properties2() {
                                         activeTab === tabId ? " active" : ""
                                     }`}
                                 >
-                                    <Link href={`/property-details-1/${property.id}`} className="img-style">
-                                        <Image
-                                            src={property.imgSrc}
-                                            width={645}
-                                            height={645}
-                                            alt="property"
-                                        />
-                                    </Link>
+                                    {property.id ? (
+                                        <Link href={`/property-details-1/${property.id}`} className="img-style">
+                                            <Image
+                                                src={property.imgSrc}
+                                                width={645}
+                                                height={645}
+                                                alt="property"
+                                            />
+                                        </Link>
+                                    ) : (
+                                        <div className="img-style">
+                                            <Image
+                                                src={property.imgSrc}
+                                                width={645}
+                                                height={645}
+                                                alt="property"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

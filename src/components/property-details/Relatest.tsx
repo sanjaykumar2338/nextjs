@@ -81,10 +81,12 @@ export default function Relatest() {
                                             <span className="bg-effect"></span>
                                         </a>
                                     </div>
-                                    <Link
-                                        href={`/property-details-1/${property.id}`}
-                                        className="overlay-link"
-                                    ></Link>
+                                    {property.id && (
+                                        <Link
+                                            href={`/property-details-1/${property.id}`}
+                                            className="overlay-link"
+                                        ></Link>
+                                    )}
                                     <div className="wishlist">
                                         <div className="hover-tooltip tooltip-left box-icon">
                                             <span className="icon icon-Heart"></span>
@@ -106,12 +108,18 @@ export default function Relatest() {
                                                 : "/month"}
                                         </span>
                                     </h4>
-                                    <Link
-                                        href={`/property-details-1/${property.id}`}
-                                        className="title mb_8 h5 link text_primary-color"
-                                    >
-                                        {property.title}
-                                    </Link>
+                                    {property.id ? (
+                                        <Link
+                                            href={`/property-details-1/${property.id}`}
+                                            className="title mb_8 h5 link text_primary-color"
+                                        >
+                                            {property.title}
+                                        </Link>
+                                    ) : (
+                                        <h5 className="title mb_8 h5 text_primary-color">
+                                            {property.title}
+                                        </h5>
+                                    )}
                                     <p>{property.address}</p>
                                     <ul className="info d-flex">
                                         <li className="d-flex align-items-center gap_8 text-title text_primary-color fw-6">
