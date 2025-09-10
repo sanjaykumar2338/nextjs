@@ -5,12 +5,14 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
-import { properties } from "@/data/properties";
+import { Property, getRandomPropertiesFromSupabase } from "@/utils/supabaseUtils";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Properties() {
     const [isMobile, setIsMobile] = useState(false);
+    const [randomProperties, setRandomProperties] = useState<Property[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const checkScreen = () => {
@@ -19,6 +21,48 @@ export default function Properties() {
         checkScreen();
         window.addEventListener("resize", checkScreen);
         return () => window.removeEventListener("resize", checkScreen);
+    }, []);
+
+    useEffect(() => {
+        // Fetch random properties from Supabase on component mount
+        const fetchRandomProperties = async () => {
+            try {
+                setLoading(true);
+                console.log('🏠 Homepage: Starting to fetch properties...');
+                
+                // Test environment variables first
+                console.log('🏠 Environment test:', {
+                    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+                    hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_KEY,
+                    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+                });
+                
+                const properties = await getRandomPropertiesFromSupabase(6);
+                console.log('🏠 Homepage: Received properties:', properties.length, properties);
+                setRandomProperties(properties);
+                
+                if (properties.length === 0) {
+                    console.warn('⚠️ No properties received from Supabase');
+                }
+            } catch (error) {
+                console.error('❌ Homepage: Error fetching random properties:', error);
+                // Try to fallback to local data for testing
+                console.log('🔄 Attempting fallback...');
+                try {
+                    const { properties: localProperties } = await import('@/data/properties');
+                    const randomLocal = localProperties.slice(0, 6);
+                    console.log('🔄 Using local fallback data:', randomLocal.length);
+                    setRandomProperties(randomLocal);
+                } catch (fallbackError) {
+                    console.error('❌ Fallback also failed:', fallbackError);
+                    setRandomProperties([]);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRandomProperties();
     }, []);
 
     return (
@@ -31,8 +75,33 @@ export default function Properties() {
                     <h3 className="split-text effect-blur-fade">
                         Find Your Dream Home
                     </h3>
+                    <p style={{ fontSize: '12px', color: '#666', textAlign: 'center' }}>
+                        {loading ? 'Loading properties...' : `Showing ${randomProperties.length} properties`}
+                    </p>
                 </div>
-                {isMobile ? (
+                {loading ? (
+                    <div className="tf-sw-mobile bg_1">
+                        <div className="tf-grid-layout-md lg-col-3 md-col-2">
+                            {[...Array(6)].map((_, idx) => (
+                                <div className="swiper-slide" key={idx}>
+                                    <div className="card-house style-default">
+                                        <div className="img-style mb_20 loading-skeleton" style={{ height: '250px', backgroundColor: '#f0f0f0', borderRadius: '12px' }}></div>
+                                        <div className="content">
+                                            <div className="loading-skeleton" style={{ height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px', marginBottom: '8px' }}></div>
+                                            <div className="loading-skeleton" style={{ height: '16px', backgroundColor: '#f0f0f0', borderRadius: '4px', marginBottom: '8px' }}></div>
+                                            <div className="loading-skeleton" style={{ height: '14px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : randomProperties.length === 0 ? (
+                    <div className="text-center py-5">
+                        <h3>No properties available</h3>
+                        <p>Unable to load properties from the database.</p>
+                    </div>
+                ) : isMobile ? (
                     <Swiper
                         modules={[Pagination]}
                         spaceBetween={15}
@@ -40,7 +109,7 @@ export default function Properties() {
                         pagination={{ clickable: true, el: ".sw-dots" }}
                         className="tf-sw-mobile bg_1"
                     >
-                        {properties.slice(0, 6).map((property, idx) => (
+                        {randomProperties.map((property, idx) => (
                             <SwiperSlide key={idx}>
                                 <div
                                     key={property.id}
@@ -132,7 +201,7 @@ export default function Properties() {
                 ) : (
                     <div className="tf-sw-mobile bg_1">
                         <div className="tf-grid-layout-md lg-col-3 md-col-2">
-                            {properties.slice(0, 6).map((property, idx) => (
+                            {randomProperties.map((property, idx) => (
                                 <div className="swiper-slide" key={idx}>
                                     <div
                                         key={property.id}

@@ -1,5 +1,5 @@
 "use client";
-import { properties } from "@/data/properties";
+import { Property, getRandomPropertiesFromSupabase } from "@/utils/supabaseUtils";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
@@ -8,6 +8,7 @@ import { Pagination } from "swiper/modules";
 
 export default function Properties() {
     const [isMobile, setIsMobile] = useState(false);
+    const [randomProperties, setRandomProperties] = useState<Property[]>([]);
 
     useEffect(() => {
         const checkScreen = () => {
@@ -16,6 +17,20 @@ export default function Properties() {
         checkScreen();
         window.addEventListener("resize", checkScreen);
         return () => window.removeEventListener("resize", checkScreen);
+    }, []);
+
+    useEffect(() => {
+        const fetchRandomProperties = async () => {
+            try {
+                const properties = await getRandomPropertiesFromSupabase(4);
+                setRandomProperties(properties);
+            } catch (error) {
+                console.error('Error fetching random properties:', error);
+                setRandomProperties([]);
+            }
+        };
+
+        fetchRandomProperties();
     }, []);
 
     return (
@@ -37,7 +52,7 @@ export default function Properties() {
                         pagination={{ clickable: true, el: ".sw-dots" }}
                         className="tf-sw-mobile bg_1"
                     >
-                        {properties.slice(0, 4).map((property, idx) => (
+                        {randomProperties.map((property, idx) => (
                             <SwiperSlide key={idx}>
                                 <div
                                     key={property.id}
@@ -129,7 +144,7 @@ export default function Properties() {
                 ) : (
                     <div className="tf-sw-mobile bg_1">
                         <div className="tf-grid-layout-md md-col-2">
-                            {properties.slice(0, 4).map((property, idx) => (
+                            {randomProperties.map((property, idx) => (
                                 <div className="swiper-slide" key={idx}>
                                     <div
                                         key={property.id}

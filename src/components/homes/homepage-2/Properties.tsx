@@ -7,7 +7,7 @@ import "swiper/css/thumbs";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import Image from "next/image";
-import { recommendedProperties } from "@/data/properties";
+import { Property, getRandomPropertiesFromSupabase } from "@/utils/supabaseUtils";
 import Link from "next/link";
 
 export default function Properties() {
@@ -17,6 +17,21 @@ export default function Properties() {
     const [mainSwiper, setMainSwiper] = React.useState<SwiperClass | null>(
         null
     );
+    const [randomProperties, setRandomProperties] = React.useState<Property[]>([]);
+
+    React.useEffect(() => {
+        const fetchRandomProperties = async () => {
+            try {
+                const properties = await getRandomPropertiesFromSupabase(3);
+                setRandomProperties(properties);
+            } catch (error) {
+                console.error('Error fetching random properties:', error);
+                setRandomProperties([]);
+            }
+        };
+
+        fetchRandomProperties();
+    }, []);
 
     return (
         <div className="section-features-property-2 tf-spacing-1">
@@ -57,7 +72,7 @@ export default function Properties() {
                                 }
                             }}
                         >
-                            {recommendedProperties.map((property) => (
+                            {randomProperties.map((property) => (
                                 <SwiperSlide key={property.id}>
                                     <div className="content">
                                         <Link
@@ -143,7 +158,7 @@ export default function Properties() {
                                 }
                             }}
                         >
-                            {recommendedProperties.map((property, idx) => (
+                            {randomProperties.map((property, idx) => (
                                 <SwiperSlide key={property.id}>
                                     <div
                                         className={`img-style${

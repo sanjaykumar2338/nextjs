@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import DropdownSelect2 from '../common/DropdownSelect2';
 import Map from '../common/Map';
+import { CITIES_CONFIG } from '@/config/cities';
 
 interface SupabaseListing {
   id: number;
@@ -93,20 +94,38 @@ export default function PropertiesSupabase() {
 
       const offset = (currentPage - 1) * itemPerPage;
 
+      // Apply cities config filtering
+      let modifiedFilters = { ...filters };
+      
+      // If cities are configured and not showing all, apply city filter
+      if (CITIES_CONFIG.ENABLED_CITIES.length > 0 && !filters.city) {
+        // Map short codes to full city names
+        const enabledCityNames = CITIES_CONFIG.ENABLED_CITIES.map(
+          code => CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]
+        ).filter(Boolean);
+        
+        // Create OR condition for all enabled cities
+        const cityQuery = enabledCityNames.join('|');
+        modifiedFilters = { ...modifiedFilters, city: cityQuery };
+      }
+
       // Get listings and total count
       const [listingsData, count] = await Promise.all([
         getListings({
-          ...filters,
+          ...modifiedFilters,
           limit: itemPerPage,
           offset: offset
         }),
-        getListingsCount(filters)
+        getListingsCount(modifiedFilters)
       ]);
 
       setListings(listingsData);
       setTotalCount(count);
       
       console.log('✅ Loaded', listingsData.length, 'listings, total:', count);
+      console.log('🏙️ Applied cities filter:', CITIES_CONFIG.ENABLED_CITIES.length > 0 ? 
+        CITIES_CONFIG.ENABLED_CITIES.map(code => `${code} (${CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]})`).join(', ') : 
+        'All cities');
     } catch (err: any) {
       console.error('❌ Failed to load listings:', err);
       setError(err.message || 'Failed to load listings');
@@ -141,6 +160,29 @@ export default function PropertiesSupabase() {
     return `$${price.toLocaleString()} ${currency}${type === 'Rent' ? '/month' : ''}`;
   };
 
+  // Transform Supabase listings to Map component format
+  const transformListingsForMap = (listings: SupabaseListing[]) => {
+    return listings
+      .filter(listing => 
+        listing.data?.location?.latitude && 
+        listing.data?.location?.longitude
+      )
+      .map(listing => ({
+        id: listing.id,
+        title: listing.data?.title?.[0]?.text || `Property ${listing.id}`,
+        address: listing.data?.location?.address1 || `${listing.city}, ${listing.country?.toUpperCase()}`,
+        lat: listing.data?.location?.latitude!,
+        long: listing.data?.location?.longitude!,
+        beds: listing.data?.numberOf?.bedrooms || 0,
+        baths: listing.data?.numberOf?.bathrooms || 0,
+        sqft: listing.data?.area?.living || 0,
+        imgSrc: listing.images?.[0] || '/images/property/property-1.jpg',
+        price: getDisplayPrice(listing),
+        city: listing.city,
+        country: listing.country
+      }));
+  };
+
   const totalPages = Math.ceil(totalCount / itemPerPage);
 
   return (
@@ -148,7 +190,7 @@ export default function PropertiesSupabase() {
       {/* Top Map Section */}
       <div className="flat-map">
         <div className="mapbox-3">
-          <Map sorted={listings as any} />
+          <Map sorted={transformListingsForMap(listings) as any} />
         </div>
         
         {/* Advanced Search Filters */}
@@ -298,9 +340,16 @@ export default function PropertiesSupabase() {
           {/* Header with Results Count and View Toggle */}
           <div className="box-title mb_40">
             <div>
-              <h4>Property Listings from Supabase</h4>
+              <h4>Property Listings</h4>
               <p className="text-muted">
                 {loading ? 'Loading...' : `${totalCount} properties found`}
+                {CITIES_CONFIG.ENABLED_CITIES.length > 0 && !filters.city && (
+                  <span className="ms-2 text-info">
+                    (filtered by: {CITIES_CONFIG.ENABLED_CITIES.map(code => 
+                      `${code} (${CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]})`
+                    ).join(', ')})
+                  </span>
+                )}
               </p>
             </div>
             

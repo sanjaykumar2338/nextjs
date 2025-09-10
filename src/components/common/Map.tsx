@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { CITIES_CONFIG } from '@/config/cities';
 
 interface Property {
     id: number | string;
@@ -15,6 +16,8 @@ interface Property {
     long: number;
     coordinates?: [number, number];
     imgSrc: string;
+    city?: string;
+    country?: string;
 }
 
 interface ProcessedProperty {
@@ -26,6 +29,8 @@ interface ProcessedProperty {
     sqft?: number;
     coordinates: [number, number];
     image: string;
+    city?: string;
+    country?: string;
 }
 
 interface MapComponentProps {
@@ -37,6 +42,32 @@ export default function MapComponent({ sorted }: MapComponentProps) {
     const map = useRef<mapboxgl.Map | null>(null);
     const currentPopup = useRef<mapboxgl.Popup | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Get pin style based on city configuration
+    const getPinStyle = (property: ProcessedProperty): { className: string; color: string; icon: string } => {
+        if (!property.city) {
+            return { className: 'office-marker default', color: '#007bff', icon: 'icon-HouseLine' };
+        }
+
+        // Check if city is in enabled cities list
+        const enabledCityNames = CITIES_CONFIG.ENABLED_CITIES.map(
+            code => CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]
+        ).filter(Boolean);
+
+        const isConfiguredCity = enabledCityNames.some(cityName => 
+            property.city?.toLowerCase().includes(cityName.toLowerCase())
+        );
+
+        if (isConfiguredCity) {
+            return { className: 'office-marker featured', color: '#28a745', icon: 'icon-HouseLine' };
+        } else if (CITIES_CONFIG.ENABLED_CITIES.length > 0) {
+            // If cities are configured but this isn't one of them, use muted style
+            return { className: 'office-marker muted', color: '#6c757d', icon: 'icon-HouseLine' };
+        } else {
+            // No cities configured, use default
+            return { className: 'office-marker default', color: '#007bff', icon: 'icon-HouseLine' };
+        }
+    };
 
     // Helper to create popup HTML
     const createPopupContent = (property: ProcessedProperty): string => {
@@ -157,13 +188,16 @@ export default function MapComponent({ sorted }: MapComponentProps) {
                     sqft: p.sqft,
                     coordinates: p.coordinates ?? [p.long, p.lat],
                     image: p.imgSrc,
+                    city: p.city,
+                    country: p.country,
                 }));
 
             // Add markers
             properties.forEach((property) => {
                 const markerElement = document.createElement("div");
-                markerElement.className = "office-marker";
-                markerElement.innerHTML = `<i class="icon-HouseLine"></i>`;
+                const pinStyle = getPinStyle(property);
+                markerElement.className = pinStyle.className;
+                markerElement.innerHTML = `<i class="${pinStyle.icon}" style="color: ${pinStyle.color}"></i>`;
 
                 new mapboxgl.Marker(markerElement)
                     .setLngLat(property.coordinates)

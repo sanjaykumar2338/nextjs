@@ -8,10 +8,16 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('❌ MISSING SUPABASE ENVIRONMENT VARIABLES!');
+  console.error('SUPABASE_URL:', SUPABASE_URL);
+  console.error('SUPABASE_KEY present:', !!SUPABASE_KEY);
   console.error('Please check your .env.local file contains:');
   console.error('NEXT_PUBLIC_SUPABASE_URL=https://phaxtzaskkqkwpszzddh.supabase.co');
   console.error('NEXT_PUBLIC_SUPABASE_KEY=your_key_here');
   throw new Error('Missing Supabase environment variables');
+} else {
+  console.log('✅ Supabase environment variables loaded');
+  console.log('SUPABASE_URL:', SUPABASE_URL);
+  console.log('SUPABASE_KEY present:', !!SUPABASE_KEY);
 }
 
 /**
@@ -58,7 +64,14 @@ export async function getListings({
     
     // City filter with wildcard search
     if (city && city !== 'All Cities' && city !== '') {
-      url.searchParams.append('city', `ilike.*${city}*`);
+      // Handle multiple cities separated by |
+      if (city.includes('|')) {
+        const cities = city.split('|');
+        const cityConditions = cities.map(c => `city.ilike.*${c.trim()}*`).join(',');
+        url.searchParams.append('or', cityConditions);
+      } else {
+        url.searchParams.append('city', `ilike.*${city}*`);
+      }
     }
     
     // Transaction type filter (Sale/Rent)
@@ -178,7 +191,14 @@ export async function getListingsCount(filters = {}) {
       url.searchParams.append('country', `eq.${country}`);
     }
     if (city && city !== 'All Cities') {
-      url.searchParams.append('city', `ilike.*${city}*`);
+      // Handle multiple cities separated by |
+      if (city.includes('|')) {
+        const cities = city.split('|');
+        const cityConditions = cities.map(c => `city.ilike.*${c.trim()}*`).join(',');
+        url.searchParams.append('or', cityConditions);
+      } else {
+        url.searchParams.append('city', `ilike.*${city}*`);
+      }
     }
     if (transactionType && transactionType !== 'All Types') {
       const typeMapping = { 'Sale': 'Sell', 'Rent': 'Rent', 'For Sale': 'Sell', 'For Rent': 'Rent' };
@@ -267,6 +287,64 @@ export async function getListingById(id) {
     return data[0] || null;
   } catch (error) {
     console.error('❌ getListingById error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get random listings for homepage display
+ */
+export async function getRandomListings(count = 6, defaultCity = 'New York') {
+  try {
+    console.log(`🎲 Fetching ${count} random listings from ${defaultCity} for homepage`);
+    
+    const url = new URL(`${SUPABASE_URL}/rest/v1/listings`);
+    
+    // Filter by city (using wildcard search to match city names)
+    if (defaultCity && defaultCity !== '') {
+      url.searchParams.append('city', `ilike.*${defaultCity}*`);
+    }
+    
+    // Get more records and randomize on client-side since random() isn't supported
+    url.searchParams.append('order', 'created_at.desc');
+    url.searchParams.append('limit', (count * 3).toString()); // Get 3x more to randomize from
+    
+    console.log('🌐 Random listings API URL:', url.toString());
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('📡 Random listings response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Random listings API Error:', errorText);
+      throw new Error(`Supabase API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Successfully fetched', data.length, 'listings from', defaultCity);
+    
+    // If no listings found for the default city, try without city filter
+    if (data.length === 0 && defaultCity) {
+      console.log(`⚠️ No listings found for ${defaultCity}, trying without city filter...`);
+      return getRandomListings(count, ''); // Recursive call without city filter
+    }
+    
+    // Randomize and return the requested count
+    const shuffled = data.sort(() => 0.5 - Math.random());
+    const randomized = shuffled.slice(0, count);
+    console.log('✅ Randomized to', randomized.length, 'listings');
+    
+    return randomized;
+  } catch (error) {
+    console.error('❌ getRandomListings error:', error);
     throw error;
   }
 }
