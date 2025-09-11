@@ -65,7 +65,7 @@ export default function PropertyDetails1({ property }: { property: Property }) {
                                 <PropertiesTitle property={property} />
                             </div>
                             <div className="properties-overview tf-spacing-8">
-                                <Overview />
+                                <Overview property={property} />
                             </div>
                             <div className="properties-description">
                                 <Description />
