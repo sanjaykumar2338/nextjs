@@ -6,6 +6,33 @@ interface SupabaseListing {
   id: number;
   country: string;
   city: string;
+  // Direct properties from new API structure
+  area?: {
+    unit?: { id: string; name: string };
+    total?: number;
+    values?: Array<{
+      unit: { id: string; name: string };
+      total: number;
+    }>;
+  };
+  numberOf?: {
+    bedrooms?: number;
+    bathrooms?: number;
+  };
+  transactionType?: {
+    id: string;
+    name: string;
+  };
+  price?: {
+    values: Array<{ value: number; currencyId: string }>;
+  };
+  location?: {
+    city?: string;
+    address1?: string;
+    latitude?: number;
+    longitude?: number;
+  };
+  title?: Array<{ text: string; language: string; original?: boolean }>;
   data?: {
     title?: Array<{ text: string; language: string; original?: boolean }>;
     price?: {
@@ -24,6 +51,10 @@ interface SupabaseListing {
     area?: {
       living?: number;
       land?: number;
+      values?: Array<{
+        unit: { id: string; name: string };
+        total: number;
+      }>;
     };
     transactionType?: {
       id: string;
@@ -68,10 +99,20 @@ export interface Property {
  */
 export function convertSupabaseListingToProperty(listing: SupabaseListing): Property {
   const data = listing.data || {};
-  const location = data.location || {};
-  const price = data.price?.values?.[0]?.value || 0;
-  const title = data.title?.find(t => t.original || t.language === 'en')?.text || `Property ${listing.id}`;
+  
+  // Handle both new API structure and old data structure
+  const location = listing.location || data.location || {};
+  const price = listing.price?.values?.[0]?.value || data.price?.values?.[0]?.value || 0;
+  const title = listing.title?.find(t => t.original || t.language === 'en')?.text || 
+               data.title?.find(t => t.original || t.language === 'en')?.text || 
+               `Property ${listing.id}`;
   const address = location.address1 || `${location.city || listing.city}, ${listing.country}`;
+  
+  // Get area in square feet from the API structure - find SquareFoot unit
+  const sqftArea = data.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 
+                   listing.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 
+                   data.area?.living || 
+                   0;
   
   // Get primary image or first available image
   let imgSrc = '/assets/images/home/home-1.jpg'; // fallback image
@@ -97,11 +138,11 @@ export function convertSupabaseListingToProperty(listing: SupabaseListing): Prop
     alt: 'property',
     address,
     title,
-    beds: data.numberOf?.bedrooms || 0,
-    baths: data.numberOf?.bathrooms || 0,
-    sqft: data.area?.living || 0,
-    categories: data.transactionType?.name || 'Property',
-    type: data.transactionType?.id || 'Sale',
+    beds: listing.numberOf?.bedrooms || data.numberOf?.bedrooms || 0,
+    baths: listing.numberOf?.bathrooms || data.numberOf?.bathrooms || 0,
+    sqft: Math.round(sqftArea), // Round to nearest whole number
+    categories: listing.transactionType?.name || data.transactionType?.name || 'Property',
+    type: listing.transactionType?.id || data.transactionType?.id || 'Sale',
     price,
     coordinates,
     garages: 1, // Default value as it's not in Supabase data

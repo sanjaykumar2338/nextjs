@@ -1,11 +1,34 @@
 import React from "react";
 
-// Supabase property type
+// Updated property type to match actual API structure
 type Property = {
     id: string;
-    title?: string;
-    country: string;
-    city?: string;
+    title?: Array<{ text: string; language: string }>;
+    area?: {
+        unit?: { id: string; name: string };
+        total?: number;
+        values?: Array<{
+            unit: { id: string; name: string };
+            total: number;
+        }>;
+    };
+    numberOf?: {
+        bedrooms?: number;
+        bathrooms?: number;
+    };
+    transactionType?: {
+        id: string;
+        name: string;
+    };
+    price?: {
+        values: Array<{ value: number; currencyId: string }>;
+    };
+    location?: {
+        address1?: string;
+        latitude?: number;
+        longitude?: number;
+    };
+    // Keep backward compatibility
     data?: {
         title?: Array<{ text: string }>;
         descriptionFull?: Array<{ text: string }>;
@@ -39,12 +62,17 @@ type Property = {
 };
 
 export default function Overview({ property }: { property: Property }) {
-    // Extract data from property
-    const bedrooms = property.data?.numberOf?.bedrooms || 0;
-    const bathrooms = property.data?.numberOf?.bathrooms || 0;
-    const livingArea = property.data?.area?.living || 0;
-    const landArea = property.data?.area?.land || 0;
-    const transactionType = property.data?.transactionType?.name || 'Property';
+    // Extract data from property - handle both new API structure and old structure
+    const bedrooms = property.numberOf?.bedrooms || property.data?.numberOf?.bedrooms || 0;
+    const bathrooms = property.numberOf?.bathrooms || property.data?.numberOf?.bathrooms || 0;
+    
+    // Get area in square feet from the API response - find SquareFoot unit
+    const sqftArea = property.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 
+                     property.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 0;
+    const livingArea = sqftArea || property.data?.area?.living || 0;
+    const landArea = sqftArea || property.data?.area?.land || 0;
+    
+    const transactionType = property.transactionType?.name || property.data?.transactionType?.name || 'Property';
     
     // Format area with proper unit
     const formatArea = (area: number) => {

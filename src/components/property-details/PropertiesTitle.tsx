@@ -46,7 +46,10 @@ export default function PropertiesTitle({ property }: { property: Property }) {
     const currency = property.data?.price?.values?.[0]?.currency || 'USD';
     const bedrooms = property.data?.numberOf?.bedrooms || 0;
     const bathrooms = property.data?.numberOf?.bathrooms || 0;
-    const area = property.data?.area?.living || property.data?.area?.land || 0;
+    // Get area in square feet from the API response - find SquareFoot unit
+    const sqftArea = property.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 
+                     property.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 0;
+    const area = sqftArea || property.data?.area?.living || property.data?.area?.land || 0;
     const address = property.data?.location?.address1 || `${property.city}, ${property.country}`;
     
     // Format price
