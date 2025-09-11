@@ -31,6 +31,10 @@ interface SupabaseListing {
     area?: {
       living?: number;
       land?: number;
+      values?: Array<{
+        unit: { id: string; name: string };
+        total: number;
+      }>;
     };
     transactionType?: {
       id: string;
@@ -185,7 +189,7 @@ export default function PropertiesSupabase() {
         long: lng,
         beds: listing.data?.numberOf?.bedrooms || 0,
         baths: listing.data?.numberOf?.bathrooms || 0,
-        sqft: listing.data?.area?.living || 0,
+        sqft: listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.living || 0,
         imgSrc: listing.images?.[0] || '/images/property/property-1.jpg',
         price: getDisplayPrice(listing),
         city: listing.city,
@@ -499,7 +503,7 @@ export default function PropertiesSupabase() {
                               </li>
                               <li className="d-flex align-items-center gap_8 text-title text_primary-color fw-6">
                                 <i className="icon-Ruler"></i>
-                                {listing.data?.area?.living?.toLocaleString() || '0'} Sqft
+                                {Math.round(listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.living || 0).toLocaleString()} Sqft
                               </li>
                             </ul>
                           </div>
@@ -566,7 +570,7 @@ export default function PropertiesSupabase() {
                               </li>
                               <li className="d-flex align-items-center gap_8 text-title text_primary-color fw-6">
                                 <i className="icon-Ruler"></i>
-                                {listing.data?.area?.living?.toLocaleString() || '0'} Sqft
+                                {Math.round(listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.living || 0).toLocaleString()} Sqft
                               </li>
                             </ul>
                           </div>
