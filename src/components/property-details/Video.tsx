@@ -4,8 +4,8 @@ import React, { useState, useCallback } from "react";
 import ModalVideo from "../common/ModalVideo";
 
 type Property = {
-    id: number;
-    imgSrc: string;
+    id: number | string;
+    imgSrc?: string;
 };
 
 export default function Video({ property }: { property: Property }) {
@@ -20,9 +20,9 @@ export default function Video({ property }: { property: Property }) {
             <h5 className="properties-title mb_20">Video</h5>
             <div className="widget-video" style={{ position: "relative" }}>
                 <Image
-                    data-src={property.imgSrc}
-                    src={property.imgSrc}
-                    alt={property.imgSrc}
+                    data-src={property.imgSrc || '/assets/images/home/home-1.jpg'}
+                    src={property.imgSrc || '/assets/images/home/home-1.jpg'}
+                    alt={property.imgSrc || 'Property video thumbnail'}
                     width={850}
                     height={400}
                 />

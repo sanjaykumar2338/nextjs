@@ -53,9 +53,9 @@ export default async function ListingsServerPage({ searchParams }: ListingsServe
     });
     
     console.log('✅ Server-side fetched', listings.length, 'listings');
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ Server-side fetch error:', err);
-    error = err.message || 'Failed to load listings';
+    error = (err as Error)?.message || 'Failed to load listings';
   }
 
   return (

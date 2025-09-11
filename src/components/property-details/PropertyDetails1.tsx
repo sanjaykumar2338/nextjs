@@ -83,7 +83,18 @@ export default function PropertyDetails1({ property }: { property: Property }) {
                                 <Floor />
                             </div>
                             <div className="properties-location tf-spacing-8">
-                                <Location property={property} />
+                                <Location property={{
+                                    id: parseInt(property.id),
+                                    imgSrc: '/assets/images/home/home-1.jpg',
+                                    address: property.city || 'Unknown Location',
+                                    title: property.data?.title?.[0]?.text || 'Property',
+                                    categories: property.data?.transactionType?.name || 'Property',
+                                    type: property.data?.transactionType?.id || 'Sale',
+                                    price: property.data?.price?.values?.[0]?.value || 0,
+                                    coordinates: [0, 0],
+                                    garages: 1,
+                                    city: property.city || 'Unknown'
+                                } as const} />
                             </div>
                             <div className="properties-nearby">
                                 <Nearby />

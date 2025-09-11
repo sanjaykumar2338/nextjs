@@ -1,14 +1,43 @@
 'use client';
 
 import { useState } from 'react';
-import { getListings, insertListing, updateListing, deleteListing, getListingById } from '@/lib/supabase';
+import { getListings, insertListing, getListingById } from '@/lib/supabase';
 
 /**
  * Example component demonstrating various Supabase operations
  * This shows how to use all the functions from lib/supabase.js
  */
+interface SupabaseListing {
+  id: number;
+  country: string;
+  city: string;
+  data?: {
+    title?: Array<{ text: string; language: string; original?: boolean }>;
+    price?: {
+      values?: Array<{ value: number; currencyId: string }>;
+    };
+    location?: {
+      city?: string;
+      address1?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    numberOf?: {
+      bedrooms?: number;
+      bathrooms?: number;
+    };
+    images?: Array<{
+      url: string;
+      caption?: string;
+      order?: number;
+    }>;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
 export default function SupabaseExamples() {
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ type: string; data: SupabaseListing[] | Error } | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Example 1: Fetch listings with different filters
@@ -23,7 +52,7 @@ export default function SupabaseExamples() {
       });
       setResult({ type: 'listings', data: listings });
     } catch (error) {
-      setResult({ type: 'error', data: error });
+      setResult({ type: 'error', data: error as Error });
     } finally {
       setLoading(false);
     }
@@ -61,31 +90,29 @@ export default function SupabaseExamples() {
       const inserted = await insertListing(newListing);
       setResult({ type: 'inserted', data: inserted });
     } catch (error) {
-      setResult({ type: 'error', data: error });
+      setResult({ type: 'error', data: error as Error });
     } finally {
       setLoading(false);
     }
   };
 
-  // Example 3: Update a listing (you'll need a real ID)
-  const updateListingExample = async () => {
-    setLoading(true);
-    try {
-      // This would need a real listing ID from your database
-      const listingId = 'your-listing-id-here';
-      const updateData = {
-        price: 500000,
-        description: 'Updated description'
-      };
-
-      const updated = await updateListing(listingId, updateData);
-      setResult({ type: 'updated', data: updated });
-    } catch (error) {
-      setResult({ type: 'error', data: error });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Example 3: Update a listing (commented out - function not implemented)
+  // const updateListingExample = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const listingId = 'your-listing-id-here';
+  //     const updateData = {
+  //       price: 500000,
+  //       description: 'Updated description'
+  //     };
+  //     const updated = await updateListing(listingId, updateData);
+  //     setResult({ type: 'updated', data: updated });
+  //   } catch (error) {
+  //     setResult({ type: 'error', data: error as Error });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   // Example 4: Get a single listing by ID
   const getSingleListing = async () => {
@@ -96,26 +123,25 @@ export default function SupabaseExamples() {
       const listing = await getListingById(listingId);
       setResult({ type: 'single', data: listing });
     } catch (error) {
-      setResult({ type: 'error', data: error });
+      setResult({ type: 'error', data: error as Error });
     } finally {
       setLoading(false);
     }
   };
 
-  // Example 5: Delete a listing
-  const deleteListingExample = async () => {
-    setLoading(true);
-    try {
-      // This would need a real listing ID from your database
-      const listingId = 'your-listing-id-here';
-      const success = await deleteListing(listingId);
-      setResult({ type: 'deleted', data: success });
-    } catch (error) {
-      setResult({ type: 'error', data: error });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Example 5: Delete a listing (commented out - function not implemented)
+  // const deleteListingExample = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const listingId = 'your-listing-id-here';
+  //     const success = await deleteListing(listingId);
+  //     setResult({ type: 'deleted', data: success });
+  //   } catch (error) {
+  //     setResult({ type: 'error', data: error as Error });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <div className="container py-5">
@@ -147,6 +173,7 @@ export default function SupabaseExamples() {
                       {loading ? 'Adding...' : 'Add New Listing'}
                     </button>
                     
+                    {/* Update function not implemented
                     <button 
                       className="btn btn-warning"
                       onClick={updateListingExample}
@@ -154,6 +181,7 @@ export default function SupabaseExamples() {
                     >
                       {loading ? 'Updating...' : 'Update Listing (Need ID)'}
                     </button>
+                    */}
                     
                     <button 
                       className="btn btn-info"
@@ -163,6 +191,7 @@ export default function SupabaseExamples() {
                       {loading ? 'Loading...' : 'Get Single Listing (Need ID)'}
                     </button>
                     
+                    {/* Delete function not implemented
                     <button 
                       className="btn btn-danger"
                       onClick={deleteListingExample}
@@ -170,6 +199,7 @@ export default function SupabaseExamples() {
                     >
                       {loading ? 'Deleting...' : 'Delete Listing (Need ID)'}
                     </button>
+                    */}
                   </div>
                 </div>
               </div>

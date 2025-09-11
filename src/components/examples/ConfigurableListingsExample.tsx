@@ -3,6 +3,35 @@
 import { useState, useEffect } from 'react';
 import { getListings } from '@/lib/supabase';
 
+interface SupabaseListing {
+  id: number;
+  country: string;
+  city: string;
+  data?: {
+    title?: Array<{ text: string; language: string; original?: boolean }>;
+    price?: {
+      values?: Array<{ value: number; currencyId: string }>;
+    };
+    location?: {
+      city?: string;
+      address1?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    numberOf?: {
+      bedrooms?: number;
+      bathrooms?: number;
+    };
+    images?: Array<{
+      url: string;
+      caption?: string;
+      order?: number;
+    }>;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Easy configuration - just change these values
 const CONFIG = {
   defaultCountry: 'mx',
@@ -27,7 +56,7 @@ const CONFIG = {
 };
 
 export default function ConfigurableListingsExample() {
-  const [listings, setListings] = useState([]);
+  const [listings, setListings] = useState<SupabaseListing[]>([]);
   const [loading, setLoading] = useState(false);
   const [country, setCountry] = useState(CONFIG.defaultCountry);
   const [city, setCity] = useState(CONFIG.defaultCity);
@@ -53,7 +82,7 @@ export default function ConfigurableListingsExample() {
 
   useEffect(() => {
     fetchListings();
-  }, [country, city, page]);
+  }, [country, city, page, fetchListings]);
 
   return (
     <div className="p-4">

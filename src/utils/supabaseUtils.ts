@@ -34,6 +34,7 @@ interface SupabaseListing {
       url: string;
       isPrimary?: boolean;
     }>;
+    description?: Array<{ text: string; language?: string }>;
   };
   images?: string[];
   created_at: string;
@@ -56,6 +57,10 @@ export interface Property {
   coordinates: [number, number];
   garages: number;
   city: string;
+  description?: string;
+  authorAvatar?: string;
+  authorName?: string;
+  authorPosition?: string;
 }
 
 /**
@@ -100,7 +105,11 @@ export function convertSupabaseListingToProperty(listing: SupabaseListing): Prop
     price,
     coordinates,
     garages: 1, // Default value as it's not in Supabase data
-    city: location.city || listing.city
+    city: location.city || listing.city,
+    description: data.description?.[0]?.text || 'No description available',
+    authorAvatar: '/assets/images/avatar/avatar-7.jpg',
+    authorName: 'Property Agent',
+    authorPosition: 'Real Estate Agent'
   };
 }
 

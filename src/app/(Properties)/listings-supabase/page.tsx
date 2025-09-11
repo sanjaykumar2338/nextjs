@@ -67,9 +67,9 @@ export default function ListingsPage() {
       setListings(data);
       console.log('✅ Loaded', data.length, 'listings');
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Failed to load listings:', err);
-      setError(err.message || 'Failed to load listings');
+      setError((err as Error)?.message || 'Failed to load listings');
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export default function ListingsPage() {
   // Load listings when filters or page changes
   useEffect(() => {
     loadListings();
-  }, [filters, currentPage]);
+  }, [filters, currentPage, loadListings]);
 
   const handleFilterChange = (key: string, value: string | number) => {
     setFilters(prev => ({
@@ -117,9 +117,9 @@ export default function ListingsPage() {
       loadListings();
       
       alert('Test listing added successfully!');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Insert failed:', err);
-      setError('Insert failed: ' + err.message);
+      setError('Insert failed: ' + (err as Error)?.message);
     }
   };
 

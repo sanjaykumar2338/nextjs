@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import OdometerCounter from "@/components/common/Odometer";
 
 type Tab = {
@@ -36,16 +36,19 @@ const tabs: Tab[] = [
 
 export default function Process1() {
     const [activeTab, setActiveTab] = useState("tab1");
-    let hoverTimer: ReturnType<typeof setTimeout>;
+    const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handleMouseEnter = useCallback((tabId: string) => {
-        hoverTimer = setTimeout(() => {
+        hoverTimer.current = setTimeout(() => {
             setActiveTab(tabId);
         }, 100);
     }, []);
 
     const handleMouseLeave = useCallback(() => {
-        clearTimeout(hoverTimer);
+        if (hoverTimer.current) {
+            clearTimeout(hoverTimer.current);
+            hoverTimer.current = null;
+        }
     }, []);
 
     return (

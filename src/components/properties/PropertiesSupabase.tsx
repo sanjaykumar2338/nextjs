@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getListings, getListingsCount } from '@/lib/supabase';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -81,14 +81,8 @@ export default function PropertiesSupabase() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const ddContainer = useRef<HTMLDivElement>(null);
-  const advanceBtnRef = useRef<HTMLDivElement>(null);
 
-  // Load listings when filters or page changes
-  useEffect(() => {
-    loadListings();
-  }, [filters, currentPage]);
-
-  const loadListings = async () => {
+  const loadListings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -126,17 +120,22 @@ export default function PropertiesSupabase() {
         'All cities');
       
       // Debug: Check for listings with missing or invalid IDs
-      const invalidListings = listingsData.filter((listing: any) => !listing.id || listing.id === 'undefined' || listing.id === null);
+      const invalidListings = listingsData.filter((listing: SupabaseListing) => !listing.id || listing.id === null);
       if (invalidListings.length > 0) {
-        console.warn('⚠️ Found', invalidListings.length, 'listings with invalid IDs:', invalidListings.map((l: any) => ({ id: l.id, title: l.data?.title?.[0]?.text })));
+        console.warn('⚠️ Found', invalidListings.length, 'listings with invalid IDs:', invalidListings.map((l: SupabaseListing) => ({ id: l.id, title: l.data?.title?.[0]?.text })));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Failed to load listings:', err);
-      setError(err.message || 'Failed to load listings');
+      setError((err as Error)?.message || 'Failed to load listings');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, currentPage]);
+
+  // Load listings when filters or page changes
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
 
   const updateFilter = (key: keyof Filters, value: string) => {
     console.log('🔄 Filter Update:', { key, value, previousValue: filters[key] });
@@ -202,7 +201,7 @@ export default function PropertiesSupabase() {
       {/* Top Map Section */}
       <div className="flat-map">
         <div className="mapbox-3">
-          <Map sorted={transformListingsForMap(listings) as any} />
+          <Map sorted={transformListingsForMap(listings)} />
         </div>
         
         {/* Advanced Search Filters */}

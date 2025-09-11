@@ -1,7 +1,36 @@
 import { getListings } from '@/lib/supabase';
 
+interface SupabaseListing {
+  id: number;
+  country: string;
+  city: string;
+  data?: {
+    title?: Array<{ text: string; language: string; original?: boolean }>;
+    price?: {
+      values?: Array<{ value: number; currencyId: string }>;
+    };
+    location?: {
+      city?: string;
+      address1?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    numberOf?: {
+      bedrooms?: number;
+      bathrooms?: number;
+    };
+    images?: Array<{
+      url: string;
+      caption?: string;
+      order?: number;
+    }>;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
 export default async function DebugImagesPage() {
-  let listings: any[] = [];
+  let listings: SupabaseListing[] = [];
   
   try {
     listings = await getListings({
@@ -19,7 +48,7 @@ export default async function DebugImagesPage() {
       <h1 className="text-3xl font-bold mb-8">🔍 Image Debug Page (Server-Side)</h1>
       
       <div className="space-y-8">
-        {listings.map((listing, index) => (
+        {listings.map((listing) => (
           <div key={listing.id} className="border rounded-lg p-6 bg-white">
             <h2 className="text-xl font-semibold mb-4">
               Listing {listing.id}: {listing.data?.title?.[0]?.text || 'No Title'}
@@ -28,22 +57,22 @@ export default async function DebugImagesPage() {
             {/* Debug Info */}
             <div className="bg-gray-100 p-4 rounded mb-4">
               <h3 className="font-semibold mb-2">Debug Info:</h3>
-              <p><strong>Images Array Length:</strong> {listing.images?.length || 0}</p>
-              <p><strong>First Image URL:</strong> {listing.images?.[0] || 'None'}</p>
+              <p><strong>Images Array Length:</strong> {listing.data?.images?.length || 0}</p>
+              <p><strong>First Image URL:</strong> {listing.data?.images?.[0]?.url || 'None'}</p>
               <p><strong>City:</strong> {listing.city}</p>
               <p><strong>Country:</strong> {listing.country}</p>
             </div>
             
             {/* Image URLs List */}
-            {listing.images && listing.images.length > 0 && (
+            {listing.data?.images && listing.data.images.length > 0 && (
               <div className="mb-4">
                 <h3 className="font-semibold mb-2">First 3 Image URLs:</h3>
                 <div className="space-y-1">
-                  {listing.images.slice(0, 3).map((url: string, imgIndex: number) => (
+                  {listing.data.images.slice(0, 3).map((image, imgIndex) => (
                     <div key={imgIndex} className="text-sm break-all">
                       <strong>{imgIndex + 1}:</strong> 
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-2">
-                        {url}
+                      <a href={image.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-2">
+                        {image.url}
                       </a>
                     </div>
                   ))}
@@ -53,7 +82,7 @@ export default async function DebugImagesPage() {
             
             {/* Test Images (Server-Side Safe) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {listing.images?.slice(0, 3).map((url: string, imgIndex: number) => (
+              {listing.data?.images?.slice(0, 3).map((image, imgIndex) => (
                 <div key={imgIndex} className="space-y-2">
                   <h4 className="font-medium">Image {imgIndex + 1}:</h4>
                   
@@ -62,7 +91,7 @@ export default async function DebugImagesPage() {
                     <p className="text-sm text-gray-600 mb-2">Simple img tag:</p>
                     <div className="w-full h-32 bg-gray-200 flex items-center justify-center overflow-hidden">
                       <img
-                        src={url}
+                        src={image.url}
                         alt={`Property ${imgIndex + 1}`}
                         className="max-w-full max-h-full object-cover"
                       />
@@ -74,7 +103,7 @@ export default async function DebugImagesPage() {
                     <p className="text-sm text-gray-600 mb-2">Background image:</p>
                     <div 
                       className="w-full h-32 bg-gray-200 bg-cover bg-center"
-                      style={{ backgroundImage: `url('${url}')` }}
+                      style={{ backgroundImage: `url('${image.url}')` }}
                     ></div>
                   </div>
                 </div>
