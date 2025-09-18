@@ -106,6 +106,11 @@ type Property = {
     images?: string[];
 };
 
+function toTitleCase(str:any) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\b(\w)/g, s => s.toUpperCase());
+}
+
 export default function PropertyDetails1({ property }: { property: Property }) {
     // Create dynamic breadcrumb items based on property data hierarchy
     // EXACT ORDER: Home icon > Country > State > Municipality > City > Property Type > Current Property
@@ -116,68 +121,68 @@ export default function PropertyDetails1({ property }: { property: Property }) {
     // '/listing-right-sidebar' | '/listing-half-map-grid' | '/listing-half-map-list'
     
     const breadcrumbItems = [];
-    
-    // 1. Home
-    breadcrumbItems.push({ 
-        label: 'Home', 
-        href: '/', 
-        isHome: true 
+
+    // 1. Home (Static)
+    breadcrumbItems.push({
+        label: 'Home',
+        href: '/',
+        isHome: true
     });
 
-    // 2. Country - convert proper country names and use correct listing page
+    // 2. Country
     if (property.country) {
-        const countryDisplayName = property.country === 'mx' ? 'Mexico' : 
-                                 property.country === 'us' ? 'United States' :
-                                 property.country === 'ca' ? 'Canada' :
-                                 property.country.charAt(0).toUpperCase() + property.country.slice(1);
+        const countryDisplayName = property.country === 'mx' ? 'Mexico' :
+
+        property.country === 'us' ? 'United States' :
+
+        property.country === 'ca' ? 'Canada' :
+
+        property.country.charAt(0).toUpperCase() + property.country.slice(1);
+
         breadcrumbItems.push({
-            label: countryDisplayName,
-            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country)}`
+
+        label: countryDisplayName,
+
+        href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country)}`
+
         });
     }
 
-    // 3. State (check both property.state and property.data.state)
-    const stateName = property.data?.state?.name || property.state;
-    if (stateName) {
+    // 3. State
+    if (property.state) {
+        const stateName = toTitleCase(property.state);
         breadcrumbItems.push({
             label: stateName,
-            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(stateName)}`
+            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(property.state)}`
         });
     }
 
-    // 4. Municipality (if available and different from city)
-    if (property.municipality && property.municipality.toLowerCase() !== (property.city || '').toLowerCase()) {
+    // 4. Municipality
+    if (property.municipality) {
+        const municipalityName = toTitleCase(property.municipality);
         breadcrumbItems.push({
-            label: property.municipality,
-            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(stateName || '')}&municipality=${encodeURIComponent(property.municipality)}`
+            label: municipalityName,
+            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(property.state || '')}&municipality=${encodeURIComponent(property.municipality)}`
         });
     }
 
-    // 5. City (prioritize location data, then fallback to property city)
-    const cityName = property.data?.location?.city || property.city;
-    if (cityName) {
+    // 5. City
+    if (property.city) {
+        const cityName = toTitleCase(property.city);
         breadcrumbItems.push({
             label: cityName,
-            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(stateName || '')}&municipality=${encodeURIComponent(property.municipality || '')}&city=${encodeURIComponent(cityName)}`
+            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(property.state || '')}&municipality=${encodeURIComponent(property.municipality || '')}&city=${encodeURIComponent(property.city)}`
         });
     }
 
-    // 6. Property Type
-    if (property.data?.type?.name) {
-        const propertyType = property.data.type.name;
+    // 6. Property Type (Final item, no link)
+    const propertyType = property.data?.type?.name;
+    if (propertyType) {
         breadcrumbItems.push({
-            label: propertyType,
-            href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(stateName || '')}&municipality=${encodeURIComponent(property.municipality || '')}&city=${encodeURIComponent(cityName || '')}&type=${encodeURIComponent(propertyType)}`
+            label: toTitleCase(propertyType)
+            // No 'href' as this is the current page/item
         });
     }
-
-    // 7. Current Property (no link)
-    const propertyTitle = property.data?.title?.[0]?.text || `Property ${property.id}`;
-    // Truncate long titles for breadcrumb
-    const truncatedTitle = propertyTitle.length > 40 ? propertyTitle.substring(0, 40) + '...' : propertyTitle;
-    breadcrumbItems.push({
-        label: truncatedTitle
-    });
 
     // DEBUG: Log breadcrumb items to verify correct URLs
     console.log('🔗 BREADCRUMB DEBUG:', {
