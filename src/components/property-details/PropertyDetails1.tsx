@@ -159,9 +159,15 @@ export default function PropertyDetails1({ property }: { property: Property }) {
 
     // 4. Municipality
     if (property.municipality) {
-        const municipalityName = toTitleCase(property.municipality);
+        // NEW: Remove the word "municipality" for a cleaner label
+        const cleanedMunicipality = property.municipality.replace(/ municipality/gi, '').trim();
+        
+        // Capitalize the cleaned-up name
+        const municipalityName = toTitleCase(cleanedMunicipality);
+
         breadcrumbItems.push({
-            label: municipalityName,
+            label: municipalityName, // Use the cleaned name for the label
+            // Use the original, full name for the URL parameter to ensure correct filtering
             href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(property.state || '')}&municipality=${encodeURIComponent(property.municipality)}`
         });
     }
