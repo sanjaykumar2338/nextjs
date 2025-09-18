@@ -21,7 +21,8 @@ type Property = {
         name: string;
     };
     price?: {
-        values: Array<{ value: number; currencyId: string }>;
+        show?: boolean;
+        values?: Array<{ type?: string; value: number; currencyId: string }>;
     };
     location?: {
         address1?: string;
@@ -37,7 +38,8 @@ type Property = {
             name: string;
         };
         price?: {
-            values: Array<{ value: number; currency: string }>;
+            show?: boolean;
+            values?: Array<{ type?: string; value: number; currencyId: string }>;
         };
         numberOf?: {
             bedrooms?: number;
@@ -45,8 +47,21 @@ type Property = {
             floors?: number;
         };
         area?: {
+            unit?: {
+                id: string;
+                name: string;
+            };
+            total?: number;
             living?: number;
             land?: number;
+            internal?: number;
+            values?: Array<{
+                unit: { id: string; name: string };
+                total: number;
+                living?: number;
+                internal?: number;
+                original?: boolean;
+            }>;
         };
         location?: {
             address1?: string;
@@ -66,11 +81,11 @@ export default function Overview2({ property }: { property: Property }) {
     const bedrooms = property.numberOf?.bedrooms || property.data?.numberOf?.bedrooms || 0;
     const bathrooms = property.numberOf?.bathrooms || property.data?.numberOf?.bathrooms || 0;
     
-    // Get area in square feet from the API response - find SquareFoot unit
+    // Get area in square feet from the API response - use same logic as listing page
     const sqftArea = property.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 
                      property.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 0;
-    const livingArea = sqftArea || property.data?.area?.living || 0;
-    const landArea = sqftArea || property.data?.area?.land || 0;
+    const livingArea = sqftArea || property.data?.area?.total || property.data?.area?.living || 0;
+    const landArea = sqftArea || property.data?.area?.total || property.data?.area?.land || 0;
     
     const transactionType = property.transactionType?.name || property.data?.transactionType?.name || 'Property';
     

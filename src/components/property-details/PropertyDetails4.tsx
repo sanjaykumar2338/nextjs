@@ -46,7 +46,26 @@ export default function PropertyDetails4({ property }: { property: Property }) {
                         <PropertiesTitle2 property={property} />
                     </div>
                     <div className="properties-overview v4 tf-spacing-8">
-                        <Overview2 />
+                        <Overview2 property={{
+                            id: property.id.toString(),
+                            title: [{ text: property.title, language: 'en' }],
+                            numberOf: {
+                                bedrooms: property.beds || 0,
+                                bathrooms: property.baths || 0
+                            },
+                            data: {
+                                area: {
+                                    living: property.sqft || 0
+                                }
+                            },
+                            transactionType: {
+                                id: property.type,
+                                name: property.type
+                            },
+                            price: {
+                                values: [{ value: property.price, currencyId: 'USD' }]
+                            }
+                        }} />
                     </div>
 
                     <div className="properties-description">

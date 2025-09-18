@@ -1,48 +1,117 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { getListings, getListingsCount } from '@/lib/supabase';
+import { useState, useEffect, useCallback } from 'react';
+import { getListings, getListingsCount, getDistinctCountries, getDistinctCities } from '@/lib/supabase';
 import Image from 'next/image';
 import Link from 'next/link';
+import Select from 'react-select';
 import DropdownSelect2 from '../common/DropdownSelect2';
 import Map from '../common/Map';
-import { CITIES_CONFIG } from '@/config/cities';
 import './properties.module.css';
 
 interface SupabaseListing {
   id: number;
-  country: string;
   city: string;
+  country: string;
+  municipality?: string;
+  state?: string;
+  external_id?: number;
+  created_at: string;
+  updated_at: string;
   data?: {
+    id?: number;
+    hash?: string;
+    type?: {
+      id: string;
+      name: string;
+    };
+    subType?: {
+      id: string;
+      name: string;
+    };
+    class?: string;
     title?: Array<{ text: string; language: string; original?: boolean }>;
     price?: {
-      values?: Array<{ value: number; currencyId: string }>;
+      show?: boolean;
+      values?: Array<{ type?: string; value: number; currencyId: string }>;
+    };
+    state?: {
+      id: string;
+      name: string;
     };
     location?: {
       city?: string;
+      placeId?: string;
       address1?: string;
       latitude?: number;
       longitude?: number;
+      postcode?: string;
+      countryISO?: string;
+      showAddress?: boolean;
+      geocodeLevel?: string;
+      showPostcode?: boolean;
     };
     numberOf?: {
+      rooms?: number;
       bedrooms?: number;
       bathrooms?: number;
     };
     area?: {
+      unit?: {
+        id: string;
+        name: string;
+      };
+      total?: number;
       living?: number;
       land?: number;
+      internal?: number;
       values?: Array<{
         unit: { id: string; name: string };
         total: number;
+        living?: number;
+        internal?: number;
+        original?: boolean;
       }>;
     };
+    timeZone?: {
+      id: number;
+      ianaid: string;
+    };
+    reference?: string;
+    categoryId?: number;
+    isArchived?: boolean;
+    showContact?: boolean;
+    contactUsers?: Array<{
+      type?: string;
+      email?: string;
+      phone?: string;
+      mobile?: string;
+      userId?: number;
+      contactId?: number;
+      firstName?: string;
+      lastName?: string;
+      [key: string]: unknown;
+    }>;
+    creationDate?: string;
+    automaticTitle?: string;
+    relevanceScore?: number;
+    descriptionFull?: Array<{ text: string; language: string; original?: boolean }>;
+    publicationDate?: string;
     transactionType?: {
       id: string;
       name: string;
     };
+    contactAccountId?: number;
+    geoPointReliable?: boolean;
+    createdByAccountId?: number;
+    isPriceChangeBoosted?: boolean;
+    publicationNotificationStatus?: string;
   };
+  amenities?: Array<{
+    count: number;
+    value: string;
+  }>;
   images?: string[];
-  created_at: string;
 }
 
 interface Filters {
@@ -60,6 +129,50 @@ interface Filters {
   sortOrder: string;
 }
 
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+// Custom styles for react-select to match the theme
+const customSelectStyles = {
+  control: (base: Record<string, unknown>) => ({
+    ...base,
+    backgroundColor: 'white',
+    borderColor: '#e5e7eb',
+    borderRadius: '0.5rem',
+    padding: '2px',
+    boxShadow: 'none',
+    '&:hover': {
+      borderColor: '#9ca3af',
+    },
+  }),
+  menu: (base: Record<string, unknown>) => ({
+    ...base,
+    borderRadius: '0.5rem',
+    overflow: 'hidden',
+    zIndex: 9999,
+  }),
+  option: (base: Record<string, unknown>, state: { isSelected: boolean; isFocused: boolean }) => ({
+    ...base,
+    backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#eff6ff' : 'white',
+    color: state.isSelected ? 'white' : '#111827',
+    cursor: 'pointer',
+  }),
+  placeholder: (base: Record<string, unknown>) => ({
+    ...base,
+    color: '#9ca3af',
+  }),
+  input: (base: Record<string, unknown>) => ({
+    ...base,
+    color: '#111827',
+  }),
+  singleValue: (base: Record<string, unknown>) => ({
+    ...base,
+    color: '#111827',
+  }),
+};
+
 export default function PropertiesSupabase() {
   const [listings, setListings] = useState<SupabaseListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +180,11 @@ export default function PropertiesSupabase() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemPerPage] = useState(12);
+  
+  // Filter options from database
+  const [countries, setCountries] = useState<SelectOption[]>([]);
+  const [cities, setCities] = useState<SelectOption[]>([]);
+  const [loadingFilters, setLoadingFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>({
     country: '',
@@ -84,7 +202,70 @@ export default function PropertiesSupabase() {
   });
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const ddContainer = useRef<HTMLDivElement>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Transaction type options
+  const transactionTypeOptions: SelectOption[] = [
+    { value: '', label: 'All Types' },
+    { value: 'Sale', label: 'For Sale' },
+    { value: 'Rent', label: 'For Rent' }
+  ];
+
+  // Bedroom options
+  const bedroomOptions: SelectOption[] = [
+    { value: '', label: 'Any Bedrooms' },
+    { value: '1', label: '1 Bedroom' },
+    { value: '2', label: '2 Bedrooms' },
+    { value: '3', label: '3 Bedrooms' },
+    { value: '4', label: '4 Bedrooms' },
+    { value: '5', label: '5 Bedrooms' },
+    { value: '6+', label: '6+ Bedrooms' }
+  ];
+
+  // Bathroom options
+  const bathroomOptions: SelectOption[] = [
+    { value: '', label: 'Any Bathrooms' },
+    { value: '1', label: '1 Bathroom' },
+    { value: '2', label: '2 Bathrooms' },
+    { value: '3', label: '3 Bathrooms' },
+    { value: '4', label: '4 Bathrooms' },
+    { value: '5+', label: '5+ Bathrooms' }
+  ];
+
+  // Load countries on component mount
+  useEffect(() => {
+    const fetchCountries = async () => {
+      setLoadingFilters(true);
+      try {
+        const countriesData = await getDistinctCountries();
+        setCountries([
+          { value: '', label: 'All Countries' },
+          ...countriesData
+        ]);
+      } catch (err) {
+        console.error('Failed to fetch countries:', err);
+      } finally {
+        setLoadingFilters(false);
+      }
+    };
+    fetchCountries();
+  }, []);
+
+  // Load cities when country changes or on mount
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const citiesData = await getDistinctCities(filters.country);
+        setCities([
+          { value: '', label: 'All Cities' },
+          ...citiesData
+        ]);
+      } catch (err) {
+        console.error('Failed to fetch cities:', err);
+      }
+    };
+    fetchCities();
+  }, [filters.country]);
 
   const loadListings = useCallback(async () => {
     try {
@@ -93,35 +274,20 @@ export default function PropertiesSupabase() {
 
       const offset = (currentPage - 1) * itemPerPage;
 
-      // Apply cities config filtering
-      let modifiedFilters = { ...filters };
-      
-      // If cities are configured and not showing all, apply city filter
-      if (CITIES_CONFIG.ENABLED_CITIES.length > 0 && !filters.city) {
-        const enabledCityNames = CITIES_CONFIG.ENABLED_CITIES.map(
-          code => CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]
-        ).filter(Boolean);
-        const cityQuery = enabledCityNames.join('|');
-        modifiedFilters = { ...modifiedFilters, city: cityQuery };
-      }
-
       // Get listings and total count
       const [listingsData, count] = await Promise.all([
         getListings({
-          ...modifiedFilters,
+          ...filters,
           limit: itemPerPage,
           offset: offset
         }),
-        getListingsCount(modifiedFilters)
+        getListingsCount(filters)
       ]);
 
       setListings(listingsData);
       setTotalCount(count);
       
       console.log('✅ Loaded', listingsData.length, 'listings, total:', count);
-      console.log('🏙️ Applied cities filter:', CITIES_CONFIG.ENABLED_CITIES.length > 0 ? 
-        CITIES_CONFIG.ENABLED_CITIES.map(code => `${code} (${CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]})`).join(', ') : 
-        'All cities');
       
       // Debug: Check for listings with missing or invalid IDs
       const invalidListings = listingsData.filter((listing: SupabaseListing) => !listing.id || listing.id === null);
@@ -134,7 +300,7 @@ export default function PropertiesSupabase() {
     } finally {
       setLoading(false);
     }
-  }, [filters, currentPage]);
+  }, [filters, currentPage, itemPerPage]);
 
   // Load listings when filters or page changes
   useEffect(() => {
@@ -147,25 +313,41 @@ export default function PropertiesSupabase() {
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Search is handled automatically by useEffect
-  };
-
-  const toggleAdvancedFilter = () => {
-    if (ddContainer.current) {
-      ddContainer.current.classList.toggle('show');
-    }
+  const clearFilters = () => {
+    setFilters({
+      country: '',
+      city: '',
+      transactionType: '',
+      bedrooms: '',
+      bathrooms: '',
+      minPrice: '',
+      maxPrice: '',
+      minSize: '',
+      maxSize: '',
+      search: '',
+      sortBy: 'created_at',
+      sortOrder: 'desc'
+    });
+    setCurrentPage(1);
   };
 
   const getDisplayPrice = (listing: SupabaseListing) => {
-    const price = listing.data?.price?.values?.[0]?.value;
-    const currency = listing.data?.price?.values?.[0]?.currencyId || 'USD';
+    // Try to get converted USD price first, then original price
+    const convertedPrice = listing.data?.price?.values?.find(v => v.type === 'Converted' && v.currencyId === 'USD');
+    const originalPrice = listing.data?.price?.values?.find(v => v.type === 'Original') || listing.data?.price?.values?.[0];
+    
+    const priceData = convertedPrice || originalPrice;
+    if (!priceData?.value) return 'Price on request';
+    
+    const price = priceData.value;
+    const currency = priceData.currencyId || 'USD';
     const type = listing.data?.transactionType?.id;
     
-    if (!price) return 'Price on request';
+    // Format price with proper currency symbol
+    const currencySymbol = currency === 'USD' ? '$' : currency === 'MXN' ? '$' : currency;
+    const formattedPrice = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
     
-    return `$${price.toLocaleString()} ${currency}${type === 'Rent' ? '/month' : ''}`;
+    return `${currencySymbol}${formattedPrice} ${currency}${type === 'Rent' ? '/month' : ''}`;
   };
 
   // Transform Supabase listings to Map component format
@@ -189,7 +371,7 @@ export default function PropertiesSupabase() {
         long: lng,
         beds: listing.data?.numberOf?.bedrooms || 0,
         baths: listing.data?.numberOf?.bathrooms || 0,
-        sqft: listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.living || 0,
+        sqft: listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.total || listing.data?.area?.living || 0,
         imgSrc: listing.images?.[0] || '/images/property/property-1.jpg',
         price: getDisplayPrice(listing),
         city: listing.city,
@@ -199,6 +381,11 @@ export default function PropertiesSupabase() {
   };
 
   const totalPages = Math.ceil(totalCount / itemPerPage);
+
+  // Check if any filters are active
+  const hasActiveFilters = filters.country || filters.city || filters.transactionType || 
+    filters.bedrooms || filters.bathrooms || filters.minPrice || filters.maxPrice || 
+    filters.minSize || filters.maxSize || filters.search;
 
   return (
     <>
@@ -211,140 +398,189 @@ export default function PropertiesSupabase() {
         {/* Advanced Search Filters */}
         <div className="tf-container">
           <div className="search-form-wrapper bg-white p-4 rounded shadow">
-            <form onSubmit={handleSearch} className="search-form">
-              <div className="row g-3">
-                {/* Search Input */}
-                <div className="col-md-3">
-                  <div className="form-group">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Search by location or title..."
-                      value={filters.search}
-                      onChange={(e) => updateFilter('search', e.target.value)}
-                    />
-                  </div>
-                </div>
+            <div className="mb-3 d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">Filter Properties</h5>
+              {hasActiveFilters && (
+                <button 
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={clearFilters}
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+            
+            <div className="row g-3">
+              {/* Search Input */}
+              <div className="col-md-6 col-lg-3">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Search location, title..."
+                  value={filters.search}
+                  onChange={(e) => updateFilter('search', e.target.value)}
+                  style={{
+                    backgroundColor: 'white',
+                    borderColor: '#e5e7eb',
+                    borderRadius: '0.5rem',
+                    padding: '10px 14px',
+                  }}
+                />
+              </div>
 
-                {/* Transaction Type */}
-                <div className="col-md-2">
-                  <select 
-                    className="form-select"
-                    value={filters.transactionType}
-                    onChange={(e) => updateFilter('transactionType', e.target.value)}
-                  >
-                    <option value="">All Types</option>
-                    <option value="Sale">For Sale</option>
-                    <option value="Rent">For Rent</option>
-                  </select>
-                </div>
+              {/* Transaction Type */}
+              <div className="col-md-6 col-lg-3">
+                <Select
+                  value={transactionTypeOptions.find(opt => opt.value === filters.transactionType)}
+                  onChange={(option) => updateFilter('transactionType', option?.value || '')}
+                  options={transactionTypeOptions}
+                  styles={customSelectStyles}
+                  placeholder="Transaction Type"
+                  isClearable={false}
+                  isSearchable={false}
+                />
+              </div>
 
-                {/* Country */}
-                <div className="col-md-2">
-                  <select 
-                    className="form-select"
-                    value={filters.country}
-                    onChange={(e) => updateFilter('country', e.target.value)}
-                  >
-                    <option value="">All Countries</option>
-                    <option value="mx">Mexico</option>
-                    <option value="us">United States</option>
-                    <option value="ca">Canada</option>
-                  </select>
-                </div>
+              {/* Country */}
+              <div className="col-md-6 col-lg-3">
+                <Select
+                  value={countries.find(opt => opt.value === filters.country)}
+                  onChange={(option) => {
+                    updateFilter('country', option?.value || '');
+                    // Clear city when country changes
+                    if (option?.value !== filters.country) {
+                      updateFilter('city', '');
+                    }
+                  }}
+                  options={countries}
+                  styles={customSelectStyles}
+                  placeholder="Select Country"
+                  isClearable={false}
+                  isSearchable
+                  isLoading={loadingFilters}
+                />
+              </div>
 
-                {/* Bedrooms */}
-                <div className="col-md-2">
-                  <select 
-                    className="form-select"
-                    value={filters.bedrooms}
-                    onChange={(e) => updateFilter('bedrooms', e.target.value)}
-                  >
-                    <option value="">Any Bedrooms</option>
-                    <option value="1">1 Bedroom</option>
-                    <option value="2">2 Bedrooms</option>
-                    <option value="3">3 Bedrooms</option>
-                    <option value="4+">4+ Bedrooms</option>
-                  </select>
-                </div>
+              {/* City */}
+              <div className="col-md-6 col-lg-3">
+                <Select
+                  value={cities.find(opt => opt.value === filters.city)}
+                  onChange={(option) => updateFilter('city', option?.value || '')}
+                  options={cities}
+                  styles={customSelectStyles}
+                  placeholder="Select City"
+                  isClearable={false}
+                  isSearchable
+                  isDisabled={!cities.length || cities.length === 1}
+                />
+              </div>
 
-                {/* Price Range */}
-                <div className="col-md-3">
-                  <div className="d-flex gap-2">
-                    <input
-                      type="number"
-                      className="form-control"
-                      placeholder="Min Price"
-                      value={filters.minPrice}
-                      onChange={(e) => updateFilter('minPrice', e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      className="form-control"
-                      placeholder="Max Price"
-                      value={filters.maxPrice}
-                      onChange={(e) => updateFilter('maxPrice', e.target.value)}
-                    />
-                  </div>
-                </div>
+              {/* Bedrooms */}
+              <div className="col-md-6 col-lg-3">
+                <Select
+                  value={bedroomOptions.find(opt => opt.value === filters.bedrooms)}
+                  onChange={(option) => updateFilter('bedrooms', option?.value || '')}
+                  options={bedroomOptions}
+                  styles={customSelectStyles}
+                  placeholder="Bedrooms"
+                  isClearable={false}
+                  isSearchable={false}
+                />
+              </div>
+
+              {/* Bathrooms */}
+              <div className="col-md-6 col-lg-3">
+                <Select
+                  value={bathroomOptions.find(opt => opt.value === filters.bathrooms)}
+                  onChange={(option) => updateFilter('bathrooms', option?.value || '')}
+                  options={bathroomOptions}
+                  styles={customSelectStyles}
+                  placeholder="Bathrooms"
+                  isClearable={false}
+                  isSearchable={false}
+                />
+              </div>
+
+              {/* Price Range */}
+              <div className="col-md-6 col-lg-3">
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="Min Price (USD)"
+                  value={filters.minPrice}
+                  onChange={(e) => updateFilter('minPrice', e.target.value)}
+                  style={{
+                    backgroundColor: 'white',
+                    borderColor: '#e5e7eb',
+                    borderRadius: '0.5rem',
+                    padding: '10px 14px',
+                  }}
+                />
+              </div>
+              <div className="col-md-6 col-lg-3">
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="Max Price (USD)"
+                  value={filters.maxPrice}
+                  onChange={(e) => updateFilter('maxPrice', e.target.value)}
+                  style={{
+                    backgroundColor: 'white',
+                    borderColor: '#e5e7eb',
+                    borderRadius: '0.5rem',
+                    padding: '10px 14px',
+                  }}
+                />
               </div>
 
               {/* Advanced Filters Toggle */}
-              <div className="advanced-filters mt-3">
+              <div className="col-12">
                 <button 
                   type="button" 
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={toggleAdvancedFilter}
+                  className="btn btn-link p-0 text-decoration-none"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
                 >
-                  Advanced Filters
+                  {showAdvanced ? 'Hide' : 'Show'} Advanced Filters
+                  <i className={`ms-2 icon-${showAdvanced ? 'CaretUp' : 'CaretDown'}`}></i>
                 </button>
-                
-                <div ref={ddContainer} className="advanced-options mt-3" style={{ display: 'none' }}>
-                  <div className="row g-3">
-                    <div className="col-md-3">
-                      <select 
-                        className="form-select"
-                        value={filters.bathrooms}
-                        onChange={(e) => updateFilter('bathrooms', e.target.value)}
-                      >
-                        <option value="">Any Bathrooms</option>
-                        <option value="1">1 Bathroom</option>
-                        <option value="2">2 Bathrooms</option>
-                        <option value="3">3 Bathrooms</option>
-                        <option value="4+">4+ Bathrooms</option>
-                      </select>
-                    </div>
-                    <div className="col-md-3">
-                      <input
-                        type="number"
-                        className="form-control"
-                        placeholder="Min Size (Sqft)"
-                        value={filters.minSize}
-                        onChange={(e) => updateFilter('minSize', e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <input
-                        type="number"
-                        className="form-control"
-                        placeholder="Max Size (Sqft)"
-                        value={filters.maxSize}
-                        onChange={(e) => updateFilter('maxSize', e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="City"
-                        value={filters.city}
-                        onChange={(e) => updateFilter('city', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
-            </form>
+
+              {/* Advanced Filters */}
+              {showAdvanced && (
+                <>
+                  <div className="col-md-6 col-lg-3">
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="Min Size (Sqft)"
+                      value={filters.minSize}
+                      onChange={(e) => updateFilter('minSize', e.target.value)}
+                      style={{
+                        backgroundColor: 'white',
+                        borderColor: '#e5e7eb',
+                        borderRadius: '0.5rem',
+                        padding: '10px 14px',
+                      }}
+                    />
+                  </div>
+                  <div className="col-md-6 col-lg-3">
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="Max Size (Sqft)"
+                      value={filters.maxSize}
+                      onChange={(e) => updateFilter('maxSize', e.target.value)}
+                      style={{
+                        backgroundColor: 'white',
+                        borderColor: '#e5e7eb',
+                        borderRadius: '0.5rem',
+                        padding: '10px 14px',
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -358,13 +594,6 @@ export default function PropertiesSupabase() {
               <h4>Property Listings</h4>
               <p className="text-muted">
                 {loading ? 'Loading...' : `${totalCount} properties found`}
-                {CITIES_CONFIG.ENABLED_CITIES.length > 0 && !filters.city && (
-                  <span className="ms-2 text-info">
-                    (filtered by: {CITIES_CONFIG.ENABLED_CITIES.map(code => 
-                      `${code} (${CITIES_CONFIG.CITY_MAPPINGS[code as keyof typeof CITIES_CONFIG.CITY_MAPPINGS]})`
-                    ).join(', ')})
-                  </span>
-                )}
               </p>
             </div>
             
@@ -443,6 +672,14 @@ export default function PropertiesSupabase() {
                 <div className="text-center py-5">
                   <h3>No properties found</h3>
                   <p>Try adjusting your search filters</p>
+                  {hasActiveFilters && (
+                    <button 
+                      className="btn btn-primary mt-3"
+                      onClick={clearFilters}
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
@@ -461,7 +698,15 @@ export default function PropertiesSupabase() {
                                 style={{ objectFit: 'cover' }}
                               />
                             ) : (
-                              <div className="image-placeholder">
+                              <div className="image-placeholder" style={{ 
+                                width: '100%', 
+                                height: '308px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                backgroundColor: '#f3f4f6',
+                                fontSize: '3rem'
+                              }}>
                                 🏠
                               </div>
                             )}
@@ -503,7 +748,7 @@ export default function PropertiesSupabase() {
                               </li>
                               <li className="d-flex align-items-center gap_8 text-title text_primary-color fw-6">
                                 <i className="icon-Ruler"></i>
-                                {Math.round(listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.living || 0).toLocaleString()} Sqft
+                                {Math.round(listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.total || listing.data?.area?.living || 0).toLocaleString()} Sqft
                               </li>
                             </ul>
                           </div>
@@ -528,7 +773,15 @@ export default function PropertiesSupabase() {
                                   style={{ objectFit: 'cover' }}
                                 />
                               ) : (
-                                <div className="image-placeholder">
+                                <div className="image-placeholder" style={{ 
+                                  width: '540px', 
+                                  height: '360px', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center',
+                                  backgroundColor: '#f3f4f6',
+                                  fontSize: '3rem'
+                                }}>
                                   🏠
                                 </div>
                               )}
@@ -570,7 +823,7 @@ export default function PropertiesSupabase() {
                               </li>
                               <li className="d-flex align-items-center gap_8 text-title text_primary-color fw-6">
                                 <i className="icon-Ruler"></i>
-                                {Math.round(listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.living || 0).toLocaleString()} Sqft
+                                {Math.round(listing.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || listing.data?.area?.total || listing.data?.area?.living || 0).toLocaleString()} Sqft
                               </li>
                             </ul>
                           </div>
@@ -581,7 +834,7 @@ export default function PropertiesSupabase() {
 
                   {/* Pagination - Original UI Style */}
                   {totalPages > 1 && (
-                    <div className="d-flex justify-content-center">
+                    <div className="d-flex justify-content-center mt-5">
                       <ul className="wg-pagination">
                         {/* Previous button */}
                         <li onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}>

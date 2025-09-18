@@ -68,7 +68,7 @@ export async function getListings({
       if (city.includes('|')) {
         const cities = city.split('|');
         const cityConditions = cities.map(c => `city.ilike.*${c.trim()}*`).join(',');
-        url.searchParams.append('or', cityConditions);
+        url.searchParams.append('or', `(${cityConditions})`);
       } else {
         url.searchParams.append('city', `ilike.*${city}*`);
       }
@@ -94,8 +94,9 @@ export async function getListings({
     
     // Bedrooms filter
     if (bedrooms && bedrooms !== 'Any Bedrooms' && bedrooms !== '') {
-      if (bedrooms === '4+') {
-        url.searchParams.append('data->numberOf->bedrooms', `gte.4`);
+      if (bedrooms === '4+' || bedrooms === '6+') {
+        const minBeds = bedrooms === '6+' ? 6 : 4;
+        url.searchParams.append('data->numberOf->bedrooms', `gte.${minBeds}`);
       } else {
         url.searchParams.append('data->numberOf->bedrooms', `eq.${parseInt(bedrooms)}`);
       }
@@ -103,50 +104,60 @@ export async function getListings({
     
     // Bathrooms filter  
     if (bathrooms && bathrooms !== 'Any Bathrooms' && bathrooms !== '') {
-      if (bathrooms === '4+') {
-        url.searchParams.append('data->numberOf->bathrooms', `gte.4`);
+      if (bathrooms === '4+' || bathrooms === '5+') {
+        const minBaths = bathrooms === '5+' ? 5 : 4;
+        url.searchParams.append('data->numberOf->bathrooms', `gte.${minBaths}`);
       } else {
         url.searchParams.append('data->numberOf->bathrooms', `eq.${parseInt(bathrooms)}`);
       }
     }
     
-    // Price range filters
+    // Price range filters - use simple filters instead of complex OR conditions
     if (minPrice && minPrice !== '' && minPrice !== 'Min Price') {
       const price = parseInt(minPrice.toString().replace(/[^0-9]/g, ''));
       if (!isNaN(price)) {
-        url.searchParams.append('data->price->values->0->value', `gte.${price}`);
+        // Use converted USD price if available, otherwise filter on all prices
+        url.searchParams.append('data->price->values->1->value', `gte.${price}`);
       }
     }
     
     if (maxPrice && maxPrice !== '' && maxPrice !== 'Max Price') {
       const price = parseInt(maxPrice.toString().replace(/[^0-9]/g, ''));
       if (!isNaN(price)) {
-        url.searchParams.append('data->price->values->0->value', `lte.${price}`);
+        // Use converted USD price if available, otherwise filter on all prices
+        url.searchParams.append('data->price->values->1->value', `lte.${price}`);
       }
     }
     
-    // Size filters
+    // Size filters - use area.total as primary filter
     if (minSize && minSize !== '' && minSize !== 'Min (SqFt)') {
       const size = parseInt(minSize.toString().replace(/[^0-9]/g, ''));
       if (!isNaN(size)) {
-        url.searchParams.append('data->area->living', `gte.${size}`);
+        url.searchParams.append('data->area->total', `gte.${size}`);
       }
     }
     
     if (maxSize && maxSize !== '' && maxSize !== 'Max (SqFt)') {
       const size = parseInt(maxSize.toString().replace(/[^0-9]/g, ''));
       if (!isNaN(size)) {
-        url.searchParams.append('data->area->living', `lte.${size}`);
+        url.searchParams.append('data->area->total', `lte.${size}`);
       }
     }
     
-    // Search in title, description, or address
+    // Search in title, description, or address - use proper JSONB text extraction with casting
     if (search && search.trim() !== '') {
-      url.searchParams.append('or', `data->title->0->text.ilike.*${search}*,data->descriptionFull->0->text.ilike.*${search}*,data->location->address1.ilike.*${search}*`);
+      const searchTerm = search.trim();
+      // Use ->> for text extraction and cast to text to use ilike
+      const searchQuery = `data->title->0->>text.ilike.*${searchTerm}*,data->descriptionFull->0->>text.ilike.*${searchTerm}*,data->location->>address1.ilike.*${searchTerm}*,data->location->>city.ilike.*${searchTerm}*`;
+      url.searchParams.append('or', `(${searchQuery})`);
     }
     
-    // Sorting
-    const orderField = sortBy === 'price' ? 'data->price->values->0->value' : sortBy;
+    // Sorting - handle new price structure
+    let orderField = sortBy;
+    if (sortBy === 'price') {
+      // Try to sort by converted USD price, fallback to original price
+      orderField = 'data->price->values->0->value';
+    }
     url.searchParams.append('order', `${orderField}.${sortOrder}`);
     
     // Pagination
@@ -222,7 +233,7 @@ export async function getListingsCount(filters = {}) {
       if (city.includes('|')) {
         const cities = city.split('|');
         const cityConditions = cities.map(c => `city.ilike.*${c.trim()}*`).join(',');
-        url.searchParams.append('or', cityConditions);
+        url.searchParams.append('or', `(${cityConditions})`);
       } else {
         url.searchParams.append('city', `ilike.*${city}*`);
       }
@@ -233,7 +244,9 @@ export async function getListingsCount(filters = {}) {
       url.searchParams.append('data->transactionType->>id', `eq.${apiType}`);
     }
     if (search && search.trim() !== '') {
-      url.searchParams.append('or', `data->title->0->text.ilike.*${search}*,data->descriptionFull->0->text.ilike.*${search}*`);
+      const searchTerm = search.trim();
+      const searchQuery = `data->title->0->>text.ilike.*${searchTerm}*,data->descriptionFull->0->>text.ilike.*${searchTerm}*,data->location->>address1.ilike.*${searchTerm}*,data->location->>city.ilike.*${searchTerm}*`;
+      url.searchParams.append('or', `(${searchQuery})`);
     }
     
     // Get count only
@@ -332,6 +345,94 @@ export async function getListingById(id) {
   } catch (error) {
     console.error('❌ getListingById error:', error);
     throw error;
+  }
+}
+
+/**
+ * Get distinct countries from listings
+ */
+export async function getDistinctCountries() {
+  try {
+    console.log('🌍 Fetching distinct countries');
+    
+    const url = new URL(`${SUPABASE_URL}/rest/v1/listings`);
+    url.searchParams.append('select', 'country');
+    url.searchParams.append('order', 'country.asc');
+    
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch countries: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Get unique countries and filter out null/empty values
+    const countries = [...new Set(data.map(item => item.country))]
+      .filter(country => country && country.trim() !== '')
+      .map(country => ({
+        value: country.toLowerCase(),
+        label: country.toUpperCase()
+      }));
+    
+    console.log('✅ Found', countries.length, 'distinct countries');
+    return countries;
+  } catch (error) {
+    console.error('❌ getDistinctCountries error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get distinct cities from listings, optionally filtered by country
+ */
+export async function getDistinctCities(country = '') {
+  try {
+    console.log('🏙️ Fetching distinct cities', country ? `for country: ${country}` : '');
+    
+    const url = new URL(`${SUPABASE_URL}/rest/v1/listings`);
+    url.searchParams.append('select', 'city');
+    url.searchParams.append('order', 'city.asc');
+    
+    if (country && country !== '') {
+      url.searchParams.append('country', `eq.${country}`);
+    }
+    
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch cities: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Get unique cities and filter out null/empty values
+    const cities = [...new Set(data.map(item => item.city))]
+      .filter(city => city && city.trim() !== '')
+      .map(city => ({
+        value: city,
+        label: city.charAt(0).toUpperCase() + city.slice(1)
+      }));
+    
+    console.log('✅ Found', cities.length, 'distinct cities');
+    return cities;
+  } catch (error) {
+    console.error('❌ getDistinctCities error:', error);
+    return [];
   }
 }
 

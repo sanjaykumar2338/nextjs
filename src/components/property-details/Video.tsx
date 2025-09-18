@@ -33,7 +33,7 @@ export default function Video({ property }: { property: Property }) {
                     className="btn-video popup-youtube"
                     aria-label="Play Video"
                 >
-                    <img src="/assets/icons/play.svg" alt="play" />
+                    <Image src="/assets/icons/play.svg" alt="play" width={60} height={60} />
                 </div>
             </div>
             <ModalVideo

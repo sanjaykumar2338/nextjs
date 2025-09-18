@@ -14,7 +14,8 @@ type Property = {
             name: string;
         };
         price?: {
-            values: Array<{ value: number; currency: string }>;
+            show?: boolean;
+            values?: Array<{ type?: string; value: number; currencyId: string }>;
         };
         numberOf?: {
             bedrooms?: number;
@@ -22,8 +23,21 @@ type Property = {
             floors?: number;
         };
         area?: {
+            unit?: {
+                id: string;
+                name: string;
+            };
+            total?: number;
             living?: number;
             land?: number;
+            internal?: number;
+            values?: Array<{
+                unit: { id: string; name: string };
+                total: number;
+                living?: number;
+                internal?: number;
+                original?: boolean;
+            }>;
         };
         location?: {
             address1?: string;
@@ -42,22 +56,27 @@ export default function PropertiesTitle({ property }: { property: Property }) {
     // Extract data from Supabase structure
     const title = property.data?.title?.[0]?.text || property.title || 'Property Title';
     const transactionType = property.data?.transactionType?.id || 'Sale';
-    const price = property.data?.price?.values?.[0]?.value || 0;
-    const currency = property.data?.price?.values?.[0]?.currency || 'USD';
+    
+    // Use the same price logic as the listing page
+    const convertedPrice = property.data?.price?.values?.find(v => v.type === 'Converted' && v.currencyId === 'USD');
+    const originalPrice = property.data?.price?.values?.find(v => v.type === 'Original') || property.data?.price?.values?.[0];
+    const priceData = convertedPrice || originalPrice;
+    
+    const price = priceData?.value || 0;
+    const currency = priceData?.currencyId || 'USD';
+    
     const bedrooms = property.data?.numberOf?.bedrooms || 0;
     const bathrooms = property.data?.numberOf?.bathrooms || 0;
-    // Get area in square feet from the API response - find SquareFoot unit
-    const sqftArea = property.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 
-                     property.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 0;
-    const area = sqftArea || property.data?.area?.living || property.data?.area?.land || 0;
+    // Get area in square feet from the API response - use same logic as listing page
+    const sqftArea = property.data?.area?.values?.find(v => v.unit?.id === "SquareFoot")?.total || 0;
+    const area = sqftArea || property.data?.area?.total || property.data?.area?.living || 0;
     const address = property.data?.location?.address1 || `${property.city}, ${property.country}`;
     
-    // Format price
+    // Format price with proper currency symbol (same as listing page)
     const formatPrice = (price: number, currency: string) => {
-        if (currency === 'USD') {
-            return `$${price.toLocaleString()}`;
-        }
-        return `${currency} ${price.toLocaleString()}`;
+        const currencySymbol = currency === 'USD' ? '$' : currency === 'MXN' ? '$' : currency;
+        const formattedPrice = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        return `${currencySymbol}${formattedPrice} ${currency}`;
     };
     return (
         <div>
@@ -83,10 +102,7 @@ export default function PropertiesTitle({ property }: { property: Property }) {
                     <div className="text-body-default mb_12">{address}</div>
                 </div>
                 <h4 className="price">
-                    {formatPrice(price, currency)}
-                    <span className="text_secondary-color text-body-1">
-                        {transactionType === "Sell" ? "/Total" : "/month"}
-                    </span>
+                    {formatPrice(price, currency)}{transactionType === "Rent" ? "/month" : ""}
                 </h4>
             </div>
             <div className="wrap-info d-flex justify-content-between align-items-end">

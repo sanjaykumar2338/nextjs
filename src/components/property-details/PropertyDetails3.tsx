@@ -170,7 +170,26 @@ export default function PropertyDetails3({ property }: { property: Property }) {
                         <div className="col-lg-8">
                             <div id="overview" className="section tf-spacing-9">
                                 <div className="properties-overview v3 properties-2  tf-spacing-8">
-                                    <Overview />
+                                    <Overview property={{
+                                        id: property.id.toString(),
+                                        title: [{ text: property.title, language: 'en' }],
+                                        numberOf: {
+                                            bedrooms: property.beds || 0,
+                                            bathrooms: property.baths || 0
+                                        },
+                                        data: {
+                                            area: {
+                                                living: property.sqft || 0
+                                            }
+                                        },
+                                        transactionType: {
+                                            id: property.type,
+                                            name: property.type
+                                        },
+                                        price: {
+                                            values: [{ value: property.price, currencyId: 'USD' }]
+                                        }
+                                    }} />
                                 </div>
                                 <div className="tf-spacing-9">
                                     <div className="properties-description properties-2">

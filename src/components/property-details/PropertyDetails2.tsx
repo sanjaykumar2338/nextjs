@@ -59,7 +59,26 @@ export default function PropertyDetails2({ property }: { property: Property }) {
                         </div>
                         <div className="col-lg-5 offset-xl-1">
                             <div className="properties-overview v2">
-                                <Overview2 />
+                                <Overview2 property={{
+                                    id: property.id.toString(),
+                                    title: [{ text: property.title, language: 'en' }],
+                                    numberOf: {
+                                        bedrooms: property.beds || 0,
+                                        bathrooms: property.baths || 0
+                                    },
+                                    data: {
+                                        area: {
+                                            living: property.sqft || 0
+                                        }
+                                    },
+                                    transactionType: {
+                                        id: property.type,
+                                        name: property.type
+                                    },
+                                    price: {
+                                        values: [{ value: property.price, currencyId: 'USD' }]
+                                    }
+                                }} />
                             </div>
                         </div>
                     </div>
