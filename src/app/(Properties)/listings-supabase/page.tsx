@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getListings, insertListing } from '@/lib/supabase';
 
 // TypeScript interfaces
@@ -31,17 +32,34 @@ interface Listing {
 }
 
 export default function ListingsPage() {
+  const searchParams = useSearchParams();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   
-  // Filters matching client requirements
+  // Initialize filters from URL parameters or defaults
   const [filters, setFilters] = useState({
-    country: 'mx',
-    city: 'caribbean vida',
+    country: '',
+    city: '',
+    state: '',
+    type: '',
     limit: 10
   });
+
+  // Initialize filters from URL parameters on component mount
+  useEffect(() => {
+    const urlParams = {
+      country: searchParams.get('country') || '',
+      city: searchParams.get('city') || '',
+      state: searchParams.get('state') || '',
+      type: searchParams.get('type') || '',
+      limit: parseInt(searchParams.get('limit') || '10')
+    };
+    
+    console.log('🔗 Reading URL parameters:', urlParams);
+    setFilters(urlParams);
+  }, [searchParams]);
 
   const loadListings = async () => {
     try {
@@ -53,6 +71,8 @@ export default function ListingsPage() {
       console.log('🔄 Loading listings with:', {
         country: filters.country,
         city: filters.city,
+        state: filters.state,
+        type: filters.type,
         limit: filters.limit,
         offset: offset
       });
@@ -60,6 +80,8 @@ export default function ListingsPage() {
       const data = await getListings({
         country: filters.country,
         city: filters.city,
+        state: filters.state,
+        type: filters.type,
         limit: filters.limit,
         offset: offset
       });
@@ -131,7 +153,7 @@ export default function ListingsPage() {
       <div className="bg-blue-50 rounded-lg p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">⚙️ Configuration (Easy to Change)</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Country Filter */}
           <div>
             <label className="block text-sm font-medium mb-2">Country:</label>
@@ -140,21 +162,45 @@ export default function ListingsPage() {
               onChange={(e) => handleFilterChange('country', e.target.value)}
               className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">🌍 All Countries</option>
               <option value="mx">🇲🇽 Mexico (mx)</option>
               <option value="us">🇺🇸 United States (us)</option>
               <option value="ca">🇨🇦 Canada (ca)</option>
-              <option value="">🌍 All Countries</option>
             </select>
+          </div>
+          
+          {/* State Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">State:</label>
+            <input
+              type="text"
+              value={filters.state}
+              onChange={(e) => handleFilterChange('state', e.target.value)}
+              placeholder="e.g. quintana roo"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           
           {/* City Filter */}
           <div>
-            <label className="block text-sm font-medium mb-2">City (with wildcards):</label>
+            <label className="block text-sm font-medium mb-2">City:</label>
             <input
               type="text"
               value={filters.city}
               onChange={(e) => handleFilterChange('city', e.target.value)}
-              placeholder="e.g. caribbean vida, playa, cancun"
+              placeholder="e.g. playa del carmen"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          {/* Property Type Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Property Type:</label>
+            <input
+              type="text"
+              value={filters.type}
+              onChange={(e) => handleFilterChange('type', e.target.value)}
+              placeholder="e.g. condo, house"
               className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -173,17 +219,25 @@ export default function ListingsPage() {
               <option value={50}>50</option>
             </select>
           </div>
-          
-          {/* Test Insert */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Test Insert:</label>
-            <button
-              onClick={testInsertListing}
-              className="w-full p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500"
-            >
-              ➕ Add Test Listing
-            </button>
-          </div>
+        </div>
+        
+        {/* Clear Filters and Test Insert Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <button
+            onClick={() => {
+              setFilters({ country: '', city: '', state: '', type: '', limit: 10 });
+              setCurrentPage(1);
+            }}
+            className="w-full p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500"
+          >
+            🗑️ Clear All Filters
+          </button>
+          <button
+            onClick={testInsertListing}
+            className="w-full p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500"
+          >
+            ➕ Add Test Listing
+          </button>
         </div>
       </div>
 
@@ -191,7 +245,7 @@ export default function ListingsPage() {
       <div className="bg-gray-100 rounded-lg p-4 mb-6">
         <h3 className="font-semibold mb-2">🔗 Current API Call:</h3>
         <code className="text-sm bg-white p-2 rounded block overflow-x-auto">
-          {`getListings({ country: "${filters.country}", city: "${filters.city}", limit: ${filters.limit}, offset: ${(currentPage - 1) * filters.limit} })`}
+          {`getListings({ country: "${filters.country}", state: "${filters.state}", city: "${filters.city}", type: "${filters.type}", limit: ${filters.limit}, offset: ${(currentPage - 1) * filters.limit} })`}
         </code>
       </div>
 

@@ -117,6 +117,9 @@ interface SupabaseListing {
 interface Filters {
   country: string;
   city: string;
+  state: string;
+  municipality: string;
+  type: string;
   transactionType: string;
   bedrooms: string;
   bathrooms: string;
@@ -189,6 +192,9 @@ export default function PropertiesSupabase() {
   const [filters, setFilters] = useState<Filters>({
     country: '',
     city: '',
+    state: '',
+    municipality: '',
+    type: '',
     transactionType: '',
     bedrooms: '',
     bathrooms: '',
@@ -203,6 +209,26 @@ export default function PropertiesSupabase() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Initialize filters from URL parameters (for breadcrumb navigation)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialFilters: Partial<Filters> = {};
+    
+    // Check for URL parameters and set initial filters
+    if (urlParams.get('country')) initialFilters.country = urlParams.get('country')!;
+    if (urlParams.get('city')) initialFilters.city = urlParams.get('city')!;
+    if (urlParams.get('state')) initialFilters.state = urlParams.get('state')!;
+    if (urlParams.get('municipality')) initialFilters.municipality = urlParams.get('municipality')!;
+    if (urlParams.get('type')) initialFilters.type = urlParams.get('type')!;
+    if (urlParams.get('transactionType')) initialFilters.transactionType = urlParams.get('transactionType')!;
+    
+    // Update filters if any URL parameters found
+    if (Object.keys(initialFilters).length > 0) {
+      console.log('🔗 Loading breadcrumb filters from URL:', initialFilters);
+      setFilters(prev => ({ ...prev, ...initialFilters }));
+    }
+  }, []);
 
   // Transaction type options
   const transactionTypeOptions: SelectOption[] = [
@@ -317,6 +343,9 @@ export default function PropertiesSupabase() {
     setFilters({
       country: '',
       city: '',
+      state: '',
+      municipality: '',
+      type: '',
       transactionType: '',
       bedrooms: '',
       bathrooms: '',
@@ -383,9 +412,9 @@ export default function PropertiesSupabase() {
   const totalPages = Math.ceil(totalCount / itemPerPage);
 
   // Check if any filters are active
-  const hasActiveFilters = filters.country || filters.city || filters.transactionType || 
-    filters.bedrooms || filters.bathrooms || filters.minPrice || filters.maxPrice || 
-    filters.minSize || filters.maxSize || filters.search;
+  const hasActiveFilters = filters.country || filters.city || filters.state || filters.type || 
+    filters.transactionType || filters.bedrooms || filters.bathrooms || filters.minPrice || 
+    filters.maxPrice || filters.minSize || filters.maxSize || filters.search;
 
   return (
     <>

@@ -42,34 +42,34 @@ export default function MapComponent({ property }: { property: Property }) {
         </div>
     `;
 
-    const showPopup = (p: Property) => {
-        const coords = p.coordinates ?? [p.long, p.lat];
-
-        // Move map to property
-        map.current?.flyTo({
-            center: coords,
-            zoom: 14,
-            speed: 1.2,
-            essential: true,
-        });
-
-        // Show popup
-        popupRef.current?.remove();
-        popupRef.current = new mapboxgl.Popup({
-            closeButton: false,
-            closeOnClick: false,
-            anchor: "bottom",
-            offset: [0, -30],
-        })
-            .setLngLat(coords)
-            .setHTML(createPopupHTML(p))
-            .addTo(map.current!);
-    };
-
     useEffect(() => {
+        const showPopup = (p: Property) => {
+            const coords = p.coordinates ?? [p.long, p.lat];
+
+            // Move map to property
+            map.current?.flyTo({
+                center: coords,
+                zoom: 14,
+                speed: 1.2,
+                essential: true,
+            });
+
+            // Show popup
+            popupRef.current?.remove();
+            popupRef.current = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: false,
+                anchor: "bottom",
+                offset: [0, -30],
+            })
+                .setLngLat(coords)
+                .setHTML(createPopupHTML(p))
+                .addTo(map.current!);
+        };
         const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+        
         if (!accessToken) {
-            setError("Missing Mapbox access token.");
+            setError("Missing Mapbox access token. Please check your environment variables.");
             return;
         }
 
@@ -77,34 +77,46 @@ export default function MapComponent({ property }: { property: Property }) {
 
         try {
             mapboxgl.accessToken = accessToken;
+            
+            // Validate coordinates
+            const coords = property.coordinates ?? [property.long, property.lat];
+            if (!coords || coords.length !== 2 || isNaN(coords[0]) || isNaN(coords[1])) {
+                coords[0] = -87.073885; // Playa del Carmen longitude
+                coords[1] = 20.629559;  // Playa del Carmen latitude
+            }
+            
             map.current = new mapboxgl.Map({
                 container: mapContainer.current,
                 style: "mapbox://styles/mapbox/light-v10",
-                center: [-122.4194, 37.7749],
-                zoom: 13,
+                center: coords,
+                zoom: 15,
                 cooperativeGestures: true,
             });
 
-            const coords = property.coordinates ?? [
-                property.long,
-                property.lat,
-            ];
-            const markerEl = document.createElement("div");
-            markerEl.className = "office-marker active"; 
-            markerEl.innerHTML = `<i class="icon-HouseLine"></i>`;
+            // Wait for map to load before adding markers
+            map.current.on('load', () => {
+                
+                // Create custom marker
+                const markerEl = document.createElement("div");
+                markerEl.className = "office-marker active"; 
+                markerEl.innerHTML = `<i class="icon-HouseLine"></i>`;
+                markerEl.style.cursor = 'pointer';
 
-            new mapboxgl.Marker(markerEl).setLngLat(coords).addTo(map.current!);
+                new mapboxgl.Marker(markerEl)
+                    .setLngLat(coords)
+                    .addTo(map.current!);
 
-            markerEl.addEventListener("click", () => {
-                document
-                    .querySelectorAll(".office-marker")
-                    .forEach((m) => m.classList.remove("active"));
-                markerEl.classList.add("active");
-                showPopup(property);
+                markerEl.addEventListener("click", () => {
+                    document
+                        .querySelectorAll(".office-marker")
+                        .forEach((m) => m.classList.remove("active"));
+                    markerEl.classList.add("active");
+                    showPopup(property);
+                });
+
+                // Show popup initially
+                setTimeout(() => showPopup(property), 500);
             });
-
-            // Show popup & move map to this property
-            showPopup(property);
 
             map.current.on("click", (e) => {
                 const target = e.originalEvent.target as HTMLElement;
@@ -117,39 +129,141 @@ export default function MapComponent({ property }: { property: Property }) {
                 }
             });
 
-            // Controls
-            map.current.addControl(
-                new mapboxgl.NavigationControl(),
-                "top-right"
-            );
-            map.current.addControl(
-                new mapboxgl.FullscreenControl(),
-                "top-right"
-            );
-            map.current.addControl(
-                new mapboxgl.GeolocateControl({
-                    positionOptions: { enableHighAccuracy: true },
-                    trackUserLocation: true,
-                    showUserHeading: true,
-                }),
-                "top-right"
-            );
+            // Add controls
+            map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+            map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
 
             map.current.on("error", (e) => {
                 console.error("Mapbox error:", e);
-                setError("Map load error.");
+                setError(`Map error: ${e.error?.message || 'Unknown error'}`);
             });
+
+            map.current.on('styledata', () => {
+                // Map style loaded
+            });
+
         } catch (err) {
             console.error("Map init error:", err);
-            setError("Map init failed.");
+            setError(`Map initialization failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
 
         return () => {
-            map.current?.remove();
-            map.current = null;
+            if (map.current) {
+                map.current.remove();
+                map.current = null;
+            }
         };
-    }, [property, showPopup]);
+    }, [property]);
 
-    if (error) return <div className="text-red-600">{error}</div>;
-    return <div ref={mapContainer} className="map-container" />;
+    if (error) {
+        return (
+            <div className="map-error" style={{ 
+                padding: '40px', 
+                textAlign: 'center', 
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #dee2e6'
+            }}>
+                <h6>Map Error</h6>
+                <p style={{ color: '#dc3545', margin: '10px 0' }}>{error}</p>
+                <small style={{ color: '#6c757d' }}>
+                    Please check your internet connection and try again.
+                </small>
+            </div>
+        );
+    }
+    
+    return (
+        <>
+            <div ref={mapContainer} className="map-container" style={{ height: '100%', width: '100%' }} />
+            <style jsx>{`
+                .map-container {
+                    height: 400px;
+                    width: 100%;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                
+                :global(.office-marker) {
+                    background-color: #3b82f6;
+                    color: white;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                    transition: all 0.3s ease;
+                    cursor: pointer;
+                    border: 3px solid white;
+                }
+                
+                :global(.office-marker:hover) {
+                    transform: scale(1.1);
+                    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+                }
+                
+                :global(.office-marker.active) {
+                    background-color: #ef4444;
+                    transform: scale(1.2);
+                    z-index: 1000;
+                }
+                
+                :global(.popup-property) {
+                    display: flex;
+                    gap: 12px;
+                    min-width: 250px;
+                    max-width: 300px;
+                }
+                
+                :global(.popup-property .img-style) {
+                    flex-shrink: 0;
+                }
+                
+                :global(.popup-property .img-style img) {
+                    border-radius: 6px;
+                    object-fit: cover;
+                }
+                
+                :global(.popup-property .content) {
+                    flex: 1;
+                }
+                
+                :global(.popup-property .content h6) {
+                    margin: 0 0 8px 0;
+                    font-size: 14px;
+                    font-weight: 600;
+                    line-height: 1.3;
+                }
+                
+                :global(.popup-property .content p) {
+                    margin: 0 0 8px 0;
+                    font-size: 12px;
+                    color: #666;
+                }
+                
+                :global(.popup-property .info) {
+                    list-style: none;
+                    padding: 0;
+                    margin: 0;
+                    display: flex;
+                    gap: 8px;
+                    font-size: 11px;
+                }
+                
+                :global(.popup-property .info li) {
+                    display: flex;
+                    align-items: center;
+                    gap: 2px;
+                    color: #888;
+                }
+                
+                :global(.popup-property .info i) {
+                    font-size: 12px;
+                }
+            `}</style>
+        </>
+    );
 }

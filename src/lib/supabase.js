@@ -28,6 +28,9 @@ export async function getListings({
   // Basic filters
   country = '', 
   city = '', 
+  state = '',
+  municipality = '',
+  type = '', // Property type like 'Apartment', 'House', etc.
   transactionType = '', // 'Sell' or 'Rent'
   
   // Property details
@@ -72,6 +75,21 @@ export async function getListings({
       } else {
         url.searchParams.append('city', `ilike.*${city}*`);
       }
+    }
+    
+    // State filter
+    if (state && state !== '' && state !== 'All States') {
+      url.searchParams.append('state', `ilike.*${state}*`);
+    }
+    
+    // Municipality filter
+    if (municipality && municipality !== '' && municipality !== 'All Municipalities') {
+      url.searchParams.append('municipality', `ilike.*${municipality}*`);
+    }
+    
+    // Property type filter (Apartment, House, etc.)
+    if (type && type !== '' && type !== 'All Types') {
+      url.searchParams.append('data->type->>name', `ilike.*${type}*`);
     }
     
     // Transaction type filter (Sale/Rent)
@@ -223,7 +241,7 @@ export async function getListingsCount(filters = {}) {
     const url = new URL(`${SUPABASE_URL}/rest/v1/listings`);
     
     // Apply same filters as getListings but get count
-    const { country, city, transactionType, search } = filters;
+    const { country, city, state, municipality, type, transactionType, search } = filters;
     
     if (country && country !== 'All Countries') {
       url.searchParams.append('country', `eq.${country}`);
@@ -237,6 +255,15 @@ export async function getListingsCount(filters = {}) {
       } else {
         url.searchParams.append('city', `ilike.*${city}*`);
       }
+    }
+    if (state && state !== '' && state !== 'All States') {
+      url.searchParams.append('state', `ilike.*${state}*`);
+    }
+    if (municipality && municipality !== '' && municipality !== 'All Municipalities') {
+      url.searchParams.append('municipality', `ilike.*${municipality}*`);
+    }
+    if (type && type !== '' && type !== 'All Types') {
+      url.searchParams.append('data->type->>name', `ilike.*${type}*`);
     }
     if (transactionType && transactionType !== 'All Types') {
       const typeMapping = { 'Sale': 'Sell', 'Rent': 'Rent', 'For Sale': 'Sell', 'For Rent': 'Rent' };
