@@ -173,6 +173,7 @@ export default function PropertyDetails1({ property }: { property: Property }) {
     }
 
     // 5. City
+    /*
     if (property.city) {
         const cityName = toTitleCase(property.city);
         breadcrumbItems.push({
@@ -180,6 +181,7 @@ export default function PropertyDetails1({ property }: { property: Property }) {
             href: `${LISTING_PAGE_URL}?country=${encodeURIComponent(property.country || '')}&state=${encodeURIComponent(property.state || '')}&municipality=${encodeURIComponent(property.municipality || '')}&city=${encodeURIComponent(property.city)}`
         });
     }
+    */
 
     // 6. Property Type (Final item, no link)
     const propertyType = property.data?.type?.name;
