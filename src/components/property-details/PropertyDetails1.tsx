@@ -106,9 +106,9 @@ type Property = {
     images?: string[];
 };
 
-function toTitleCase(str:any) {
-    if (!str) return '';
-    return str.toLowerCase().replace(/\b(\w)/g, s => s.toUpperCase());
+function toTitleCase(str: string | null | undefined) {
+  if (!str) return '';
+  return str.toLowerCase().replace(/\b(\w)/g, (s: string) => s.toUpperCase());
 }
 
 export default function PropertyDetails1({ property }: { property: Property }) {
