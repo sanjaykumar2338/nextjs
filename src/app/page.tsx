@@ -9,6 +9,7 @@ import Testimonials from "@/components/homes/homepage-1/Testimonials";
 import LatestNews from "@/components/homes/LatestNews";
 import Layout from "@/components/layouts/Layout-defaul";
 
+
 export default function Home() {
     return (
         <Layout>
